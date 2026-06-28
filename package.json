@@ -8,7 +8,8 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node --test test/",
+    "mock": "node scripts/mock-console.js",
+    "test": "node --test test/*.test.js",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac"

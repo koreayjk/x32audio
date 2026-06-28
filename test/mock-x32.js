@@ -46,9 +46,9 @@ class MockX32 {
   /** 미터 구독 시 보낼 스펙트럼을 제공하는 함수 설정. () => number[] (0..1) */
   setSpectrumProvider(fn) { this._spectrumProvider = fn; }
 
-  start() {
+  start(port = 0, host = '127.0.0.1') {
     return new Promise((resolve) => {
-      this.server = new Server(0, '127.0.0.1', () => {
+      this.server = new Server(port, host, () => {
         this.port = this.server.port;
         resolve(this.port);
       });
