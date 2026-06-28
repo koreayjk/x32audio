@@ -295,13 +295,25 @@
         <p class="ag-note">※ 컴퓨터 마이크로 현장 소리를 듣고 분석합니다. 믹서 채널 스트립의
           노브 위치를 참고해 안내대로 돌려보세요.</p>
       </div>
-      <div class="ag-strip">
-        <div class="strip-title">채널 스트립</div>
-        <div class="knob-wrap" data-knob="gain"><div class="knob"><span class="ind"></span></div><label>GAIN</label></div>
-        <div class="knob-wrap" data-knob="high"><div class="knob"><span class="ind"></span></div><label>HIGH</label></div>
-        <div class="knob-wrap" data-knob="mid"><div class="knob"><span class="ind"></span></div><label>MID</label></div>
-        <div class="knob-wrap" data-knob="low"><div class="knob"><span class="ind"></span></div><label>LOW</label></div>
-        <div class="fader-wrap"><div class="fader-track"><div class="fader-knob"></div></div><label>FADER</label></div>
+      <div class="ag-mixer-wrap">
+        <div class="ag-mixer-head">
+          <label class="inline">믹서
+            <select id="mixerModel">
+              <option value="builtin">기본 믹서 그림</option>
+              <option value="custom">내 믹서 사진</option>
+            </select>
+          </label>
+          <input id="mixerPhoto" type="file" accept="image/*" class="hidden" />
+          <button id="uploadPhoto" class="btn small">📷 사진 업로드</button>
+          <button id="calibBtn" class="btn small ghost">📍 노브 위치 지정</button>
+        </div>
+        <div class="ag-mixer" id="agMixer">
+          <img id="mixerCanvas" class="mixer-canvas" alt="믹서" />
+          <div class="knob-hi hidden" id="knobHi"><span class="khi-arrow"></span></div>
+          <div class="calib-hint hidden" id="calibHint"></div>
+        </div>
+        <p class="ag-note" id="mixerNote">기본 그림 위에 돌릴 노브를 표시합니다. 내 믹서 사진을
+          올리고 노브 위치를 한 번 지정하면, 실제 믹서 사진 위에서 안내받을 수 있어요.</p>
       </div>
     </div>
   </div>

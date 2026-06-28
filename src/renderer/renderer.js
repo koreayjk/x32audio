@@ -1046,7 +1046,7 @@ function stopAnalog() {
   agAnalyser = null;
   agMic.textContent = '🎤 마이크 시작';
   agMic.classList.remove('active');
-  document.querySelectorAll('.knob-wrap.active').forEach((k) => k.classList.remove('active', 'alarm'));
+  if (knobHi) knobHi.classList.add('hidden');
 }
 
 function renderAnalog(m, adv) {
@@ -1057,18 +1057,19 @@ function renderAnalog(m, adv) {
   agBalance.textContent = quiet ? '—' : balanceText(m);
   agAdvice.textContent = adv.text;
   agAdvice.className = `ag-advice status-${adv.status}`;
-  document.querySelectorAll('.knob-wrap').forEach((k) => {
-    const on = adv.knob === k.dataset.knob;
-    k.classList.toggle('active', on);
-    k.classList.toggle('alarm', on && adv.status === 'alarm');
-    if (on) {
-      k.setAttribute('data-arrow', adv.dir === 'down' ? '↺' : '↻');
-      const ind = k.querySelector('.ind');
-      if (ind) ind.style.transform = `translateX(-50%) rotate(${adv.dir === 'down' ? -40 : 40}deg)`;
-    } else {
-      k.removeAttribute('data-arrow');
-    }
-  });
+  highlightKnob(adv);
+}
+
+// 활성 노브를 믹서 그림/사진 위 좌표에 하이라이트
+function highlightKnob(adv) {
+  const c = adv.knob && mixerCoords[adv.knob];
+  if (!c) { knobHi.classList.add('hidden'); return; }
+  knobHi.style.left = `${c.x * 100}%`;
+  knobHi.style.top = `${c.y * 100}%`;
+  knobHi.classList.remove('hidden');
+  knobHi.classList.toggle('alarm', adv.status === 'alarm');
+  const arrow = knobHi.querySelector('.khi-arrow');
+  if (arrow) arrow.textContent = adv.dir === 'down' ? '↺' : '↻';
 }
 
 function balanceText(m) {
@@ -1078,6 +1079,129 @@ function balanceText(m) {
   if (m.midProp > 0.4) return '중음 우세';
   return '균형';
 }
+
+// ---- 믹서 그림/사진 + 노브 위치 매핑 ----
+const mixerModel = $('mixerModel');
+const mixerPhoto = $('mixerPhoto');
+const uploadPhoto = $('uploadPhoto');
+const calibBtn = $('calibBtn');
+const agMixer = $('agMixer');
+const mixerCanvas = $('mixerCanvas');
+const knobHi = $('knobHi');
+const calibHint = $('calibHint');
+const mixerNote = $('mixerNote');
+const PHOTO_KEY = 'x32_mixer_photo';
+
+// 기본 믹서 그림(SVG) — 채널 스트립 1개. 노브 좌표는 아래 BUILTIN_COORDS 와 일치.
+function mixerSVG() {
+  const knob = (cx, cy, label) =>
+    `<circle cx="${cx}" cy="${cy}" r="30" fill="#3a425c" stroke="#11141d" stroke-width="3"/>` +
+    `<circle cx="${cx}" cy="${cy}" r="24" fill="#2b3147"/>` +
+    `<line x1="${cx}" y1="${cy - 22}" x2="${cx}" y2="${cy - 9}" stroke="#e8ecf5" stroke-width="3" stroke-linecap="round"/>` +
+    `<text x="${cx}" y="${cy + 48}" fill="#9aa3bd" font-size="15" font-weight="700" text-anchor="middle" font-family="sans-serif">${label}</text>`;
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 520">' +
+    '<rect x="6" y="6" width="288" height="508" rx="14" fill="#262c3d" stroke="#38415c" stroke-width="2"/>' +
+    '<rect x="46" y="22" width="208" height="22" rx="4" fill="#1a1e2a"/>' +
+    '<text x="150" y="38" fill="#9aa3bd" font-size="13" text-anchor="middle" font-family="sans-serif">채널 1</text>' +
+    knob(150, 80, 'GAIN') + knob(150, 180, 'HIGH') + knob(150, 265, 'MID') + knob(150, 350, 'LOW') +
+    '<rect x="142" y="398" width="16" height="104" rx="6" fill="#1a1e2a" stroke="#38415c"/>' +
+    '<rect x="126" y="432" width="48" height="18" rx="4" fill="#4a536e" stroke="#11141d"/>' +
+    '<text x="150" y="514" fill="#9aa3bd" font-size="12" text-anchor="middle" font-family="sans-serif">FADER</text>' +
+    '</svg>';
+  return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+}
+const BUILTIN_COORDS = {
+  gain: { x: 0.5, y: 0.154 }, high: { x: 0.5, y: 0.346 },
+  mid: { x: 0.5, y: 0.510 }, low: { x: 0.5, y: 0.673 },
+};
+
+let customPhoto = loadJson(PHOTO_KEY, null); // { dataUrl, coords }
+let mixerCoords = BUILTIN_COORDS;
+
+function setMixerModel(model) {
+  knobHi.classList.add('hidden');
+  if (model === 'custom') {
+    calibBtn.classList.remove('hidden');
+    if (customPhoto && customPhoto.dataUrl) {
+      mixerCanvas.src = customPhoto.dataUrl;
+      mixerCoords = customPhoto.coords && Object.keys(customPhoto.coords).length ? customPhoto.coords : {};
+      mixerNote.textContent = Object.keys(mixerCoords).length
+        ? '내 믹서 사진 위에서 안내합니다. 위치를 바꾸려면 [노브 위치 지정].'
+        : '노브 위치가 아직 지정되지 않았습니다. [📍 노브 위치 지정]을 눌러 GAIN·HIGH·MID·LOW를 찍어주세요.';
+    } else {
+      mixerCanvas.removeAttribute('src');
+      mixerCoords = {};
+      mixerNote.textContent = '내 믹서 사진을 올려주세요. [📷 사진 업로드]';
+    }
+  } else {
+    calibBtn.classList.add('hidden');
+    mixerCanvas.src = mixerSVG();
+    mixerCoords = BUILTIN_COORDS;
+    mixerNote.textContent = '기본 그림 위에 돌릴 노브를 표시합니다. 내 믹서 사진을 올리면 실제 사진 위에서 안내받을 수 있어요.';
+  }
+}
+mixerModel.addEventListener('change', () => setMixerModel(mixerModel.value));
+uploadPhoto.addEventListener('click', () => mixerPhoto.click());
+mixerPhoto.addEventListener('change', async () => {
+  const file = mixerPhoto.files[0];
+  mixerPhoto.value = '';
+  if (!file) return;
+  const dataUrl = await new Promise((res) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.readAsDataURL(file);
+  });
+  customPhoto = { dataUrl, coords: {} };
+  saveJson(PHOTO_KEY, customPhoto);
+  mixerModel.value = 'custom';
+  setMixerModel('custom');
+  showToast('사진 업로드 완료. 이제 노브 위치를 지정하세요.', 'ok');
+  startCalibration();
+});
+
+// 노브 위치 보정 (사진 위 4점 클릭)
+const CALIB_ORDER = [['gain', 'GAIN(게인)'], ['high', 'HIGH(고음)'], ['mid', 'MID(중음)'], ['low', 'LOW(저음)']];
+let calibActive = false;
+let calibQueue = [];
+let calibCoords = {};
+function startCalibration() {
+  if (mixerModel.value !== 'custom' || !customPhoto || !customPhoto.dataUrl) {
+    return showToast('먼저 내 믹서 사진을 업로드하세요.', 'err');
+  }
+  calibActive = true;
+  calibQueue = CALIB_ORDER.slice();
+  calibCoords = {};
+  knobHi.classList.add('hidden');
+  nextCalib();
+}
+function nextCalib() {
+  if (!calibQueue.length) {
+    calibActive = false;
+    calibHint.classList.add('hidden');
+    customPhoto.coords = calibCoords;
+    saveJson(PHOTO_KEY, customPhoto);
+    mixerCoords = calibCoords;
+    mixerNote.textContent = '내 믹서 사진 위에서 안내합니다. 위치를 바꾸려면 [노브 위치 지정].';
+    showToast('노브 위치 저장 완료!', 'ok');
+    return;
+  }
+  calibHint.textContent = `${calibQueue[0][1]} 노브를 클릭하세요`;
+  calibHint.classList.remove('hidden');
+}
+calibBtn.addEventListener('click', startCalibration);
+agMixer.addEventListener('click', (e) => {
+  if (!calibActive) return;
+  const rect = mixerCanvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  if (x < 0 || x > 1 || y < 0 || y > 1) return;
+  const [k] = calibQueue.shift();
+  calibCoords[k] = { x, y };
+  nextCalib();
+});
+
+setMixerModel('builtin');
 
 // ---- 사용 가이드 투어 ----
 const guideBtn = $('guideBtn');

@@ -373,35 +373,29 @@ body.simple .feedback { display: none; }
 .ag-advice.status-alarm { border-color: var(--red); background: rgba(255,93,108,.1); }
 .ag-note { color: var(--muted); font-size: 12px; margin-top: 16px; line-height: 1.6; }
 
-/* 믹서 채널 스트립 + 노브 */
-.ag-strip {
-  background: linear-gradient(180deg, #2a3145, #20263a); border: 1px solid var(--line);
-  border-radius: 14px; padding: 22px; display: flex; flex-direction: column; align-items: center; gap: 18px;
+/* 믹서 사진/그림 + 노브 위치 매핑 */
+.ag-mixer-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.ag-mixer-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ag-mixer-head select { background: var(--card2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+.ag-mixer {
+  position: relative; width: 240px; max-width: 100%;
+  border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #20263a;
 }
-.strip-title { color: var(--muted); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
-.knob-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
-.knob {
-  width: 60px; height: 60px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 35%, #4a536e, #2b3147);
-  border: 2px solid #1a1e2a; box-shadow: 0 4px 10px rgba(0,0,0,.4);
-  position: relative; transition: box-shadow .2s, border-color .2s;
+.mixer-canvas { display: block; width: 100%; height: auto; }
+.knob-hi {
+  position: absolute; width: 56px; height: 56px; margin: -28px 0 0 -28px;
+  border-radius: 50%; border: 3px solid var(--amber);
+  box-shadow: 0 0 0 3px rgba(255,180,84,.3), 0 0 22px rgba(255,180,84,.7);
+  pointer-events: none; transition: left .2s, top .2s;
 }
-.knob .ind {
-  position: absolute; left: 50%; top: 7px; width: 3px; height: 18px; border-radius: 2px;
-  background: #cdd6f0; transform-origin: 50% 23px; transform: translateX(-50%) rotate(0deg);
+.knob-hi.alarm { border-color: var(--red); box-shadow: 0 0 0 3px rgba(255,93,108,.35), 0 0 24px rgba(255,93,108,.8); }
+.khi-arrow { position: absolute; right: -30px; top: 50%; transform: translateY(-50%); font-size: 24px; font-weight: 800; color: var(--amber); }
+.knob-hi.alarm .khi-arrow { color: var(--red); }
+.calib-hint {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 16px; background: rgba(8,10,16,.7); cursor: crosshair;
+  font-size: 16px; font-weight: 700; color: var(--amber);
 }
-.knob-wrap label { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .5px; }
-.knob-wrap.active .knob { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(255,180,84,.35), 0 0 18px rgba(255,180,84,.5); }
-.knob-wrap.active.alarm .knob { border-color: var(--red); box-shadow: 0 0 0 3px rgba(255,93,108,.4), 0 0 20px rgba(255,93,108,.6); }
-.knob-wrap.active label { color: var(--amber); }
-.knob-wrap.active::after {
-  content: attr(data-arrow); position: absolute; right: -34px; top: 16px;
-  font-size: 22px; font-weight: 800; color: var(--amber);
-}
-.knob-wrap.active.alarm::after { color: var(--red); }
-.fader-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
-.fader-track { width: 12px; height: 90px; background: #1a1e2a; border-radius: 6px; position: relative; border: 1px solid var(--line); }
-.fader-knob { position: absolute; left: -6px; top: 30%; width: 24px; height: 14px; background: #4a536e; border-radius: 4px; border: 1px solid #1a1e2a; }
 
 @media (max-width: 760px) {
   .ms-grid { grid-template-columns: 1fr; }
