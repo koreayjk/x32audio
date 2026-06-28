@@ -982,9 +982,57 @@ const agLevel = $('agLevel');
 const agFreq = $('agFreq');
 const agBalance = $('agBalance');
 const agAdvice = $('agAdvice');
+const audioDevice = $('audioDevice');
+const sourceNote = $('sourceNote');
+const agToDigital = $('agToDigital');
 const MIXER_KEY = 'x32_mixer_type';
 
 mixerBtn.addEventListener('click', () => { renderMixerOptions(); mixerSelect.classList.remove('hidden'); });
+
+// 디지털 업그레이드 유도 → 믹서 선택 화면으로
+agToDigital.addEventListener('click', () => {
+  stopAnalog();
+  analogGuide.classList.add('hidden');
+  renderMixerOptions();
+  mixerSelect.classList.remove('hidden');
+});
+
+// ---- 오디오 입력 장치 선택 ----
+function looksBuiltIn(label) {
+  return !label || /built-?in|내장|macbook|imac|기본|default/i.test(label);
+}
+function updateSourceNote() {
+  const opt = audioDevice.options[audioDevice.selectedIndex];
+  const label = opt ? opt.textContent : '';
+  if (looksBuiltIn(label)) {
+    sourceNote.classList.remove('iface');
+    sourceNote.innerHTML = '🎤 내장 마이크 — 기본 분석. <b>더 정확한 분석을 위해 USB 오디오 인터페이스를 권장합니다.</b>';
+  } else {
+    sourceNote.classList.add('iface');
+    sourceNote.innerHTML = '🎛️ 오디오 인터페이스 — 정확한 분석 ✓';
+  }
+}
+async function refreshDevices() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const inputs = devices.filter((d) => d.kind === 'audioinput');
+    const cur = audioDevice.value;
+    audioDevice.innerHTML = '<option value="">기본 입력 (자동)</option>';
+    inputs.forEach((d, idx) => {
+      const o = document.createElement('option');
+      o.value = d.deviceId;
+      o.textContent = d.label || `마이크 ${idx + 1}`;
+      audioDevice.appendChild(o);
+    });
+    if (cur) audioDevice.value = cur;
+  } catch (_) { /* ignore */ }
+  updateSourceNote();
+}
+audioDevice.addEventListener('change', () => {
+  updateSourceNote();
+  if (agStream) { stopAnalog(); startAnalog(); } // 장치 바꾸면 다시 시작
+});
+refreshDevices();
 
 // 믹서 목록을 레지스트리에서 받아 동적으로 그린다 (브랜드 추가 시 자동 반영)
 async function renderMixerOptions() {
@@ -1036,14 +1084,16 @@ let agLevelSmoothed = 0;
 agMic.addEventListener('click', () => { if (agStream) stopAnalog(); else startAnalog(); });
 
 async function startAnalog() {
+  const deviceId = audioDevice.value;
+  const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+  if (deviceId) audio.deviceId = { exact: deviceId };
   try {
-    agStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-    });
+    agStream = await navigator.mediaDevices.getUserMedia({ audio });
   } catch (err) {
     showToast('마이크를 사용할 수 없습니다: ' + errMsg(err), 'err');
     return;
   }
+  refreshDevices(); // 권한 허용 후에야 장치 이름이 보임
   agCtx = new (window.AudioContext || window.webkitAudioContext)();
   const srcNode = agCtx.createMediaStreamSource(agStream);
   agAnalyser = agCtx.createAnalyser();
@@ -1117,28 +1167,36 @@ const calibHint = $('calibHint');
 const mixerNote = $('mixerNote');
 const PHOTO_KEY = 'x32_mixer_photo';
 
-// 기본 믹서 그림(SVG) — 채널 스트립 1개. 노브 좌표는 아래 BUILTIN_COORDS 와 일치.
-function mixerSVG() {
+// 브랜드별 믹서 채널 스트립 그림(SVG). 모두 GAIN/HIGH/MID/LOW + 페이더 배치로
+// 같은 노브 좌표(BUILTIN_COORDS)를 쓰되, 색/라벨로 모델 느낌을 낸다.
+const MIXER_MODELS = {
+  generic: { title: '채널 1', panel: '#262c3d', edge: '#38415c', knob: '#3a425c', knobIn: '#2b3147', tick: '#e8ecf5', label: '#9aa3bd' },
+  yamaha: { title: 'Yamaha MG', panel: '#23272f', edge: '#3a4350', knob: '#c9ccd2', knobIn: '#e7e9ec', tick: '#1a1e2a', label: '#aeb6c4' },
+  behringer: { title: 'BEHRINGER XENYX', panel: '#15171c', edge: '#2a2f38', knob: '#2b2f36', knobIn: '#1c1f25', tick: '#d8b24a', label: '#c9a24b' },
+  mackie: { title: 'Mackie ProFX', panel: '#141a1b', edge: '#2a3433', knob: '#242a2b', knobIn: '#1a1f20', tick: '#3fae6b', label: '#7fcf9e' },
+};
+function buildModelSVG(modelKey) {
+  const m = MIXER_MODELS[modelKey] || MIXER_MODELS.generic;
   const knob = (cx, cy, label) =>
-    `<circle cx="${cx}" cy="${cy}" r="30" fill="#3a425c" stroke="#11141d" stroke-width="3"/>` +
-    `<circle cx="${cx}" cy="${cy}" r="24" fill="#2b3147"/>` +
-    `<line x1="${cx}" y1="${cy - 22}" x2="${cx}" y2="${cy - 9}" stroke="#e8ecf5" stroke-width="3" stroke-linecap="round"/>` +
-    `<text x="${cx}" y="${cy + 48}" fill="#9aa3bd" font-size="15" font-weight="700" text-anchor="middle" font-family="sans-serif">${label}</text>`;
+    `<circle cx="${cx}" cy="${cy}" r="30" fill="${m.knob}" stroke="#11141d" stroke-width="3"/>` +
+    `<circle cx="${cx}" cy="${cy}" r="23" fill="${m.knobIn}"/>` +
+    `<line x1="${cx}" y1="${cy - 21}" x2="${cx}" y2="${cy - 9}" stroke="${m.tick}" stroke-width="3" stroke-linecap="round"/>` +
+    `<text x="${cx}" y="${cy + 48}" fill="${m.label}" font-size="15" font-weight="700" text-anchor="middle" font-family="sans-serif">${label}</text>`;
   const svg =
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 520">' +
-    '<rect x="6" y="6" width="288" height="508" rx="14" fill="#262c3d" stroke="#38415c" stroke-width="2"/>' +
-    '<rect x="46" y="22" width="208" height="22" rx="4" fill="#1a1e2a"/>' +
-    '<text x="150" y="38" fill="#9aa3bd" font-size="13" text-anchor="middle" font-family="sans-serif">채널 1</text>' +
-    knob(150, 80, 'GAIN') + knob(150, 180, 'HIGH') + knob(150, 265, 'MID') + knob(150, 350, 'LOW') +
-    '<rect x="142" y="398" width="16" height="104" rx="6" fill="#1a1e2a" stroke="#38415c"/>' +
-    '<rect x="126" y="432" width="48" height="18" rx="4" fill="#4a536e" stroke="#11141d"/>' +
-    '<text x="150" y="514" fill="#9aa3bd" font-size="12" text-anchor="middle" font-family="sans-serif">FADER</text>' +
+    '<svg xmlns="http://www.w3.org/2000/svg" width="360" height="624" viewBox="0 0 300 520">' +
+    `<rect x="6" y="6" width="288" height="508" rx="14" fill="${m.panel}" stroke="${m.edge}" stroke-width="2"/>` +
+    `<rect x="40" y="20" width="220" height="24" rx="4" fill="#0e1016"/>` +
+    `<text x="150" y="37" fill="${m.label}" font-size="13" font-weight="700" text-anchor="middle" font-family="sans-serif">${m.title}</text>` +
+    knob(150, 82, 'GAIN') + knob(150, 182, 'HIGH') + knob(150, 266, 'MID') + knob(150, 350, 'LOW') +
+    `<rect x="142" y="398" width="16" height="104" rx="6" fill="#0e1016" stroke="${m.edge}"/>` +
+    `<rect x="126" y="432" width="48" height="18" rx="4" fill="${m.knob}" stroke="#11141d"/>` +
+    `<text x="150" y="514" fill="${m.label}" font-size="12" text-anchor="middle" font-family="sans-serif">FADER</text>` +
     '</svg>';
   return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
 }
 const BUILTIN_COORDS = {
-  gain: { x: 0.5, y: 0.154 }, high: { x: 0.5, y: 0.346 },
-  mid: { x: 0.5, y: 0.510 }, low: { x: 0.5, y: 0.673 },
+  gain: { x: 0.5, y: 0.158 }, high: { x: 0.5, y: 0.350 },
+  mid: { x: 0.5, y: 0.512 }, low: { x: 0.5, y: 0.673 },
 };
 
 let customPhoto = loadJson(PHOTO_KEY, null); // { dataUrl, coords }
@@ -1147,6 +1205,7 @@ let mixerCoords = BUILTIN_COORDS;
 function setMixerModel(model) {
   knobHi.classList.add('hidden');
   if (model === 'custom') {
+    uploadPhoto.classList.remove('hidden');
     calibBtn.classList.remove('hidden');
     if (customPhoto && customPhoto.dataUrl) {
       mixerCanvas.src = customPhoto.dataUrl;
@@ -1160,10 +1219,11 @@ function setMixerModel(model) {
       mixerNote.textContent = '내 믹서 사진을 올려주세요. [📷 사진 업로드]';
     }
   } else {
+    uploadPhoto.classList.add('hidden');
     calibBtn.classList.add('hidden');
-    mixerCanvas.src = mixerSVG();
+    mixerCanvas.src = buildModelSVG(model);
     mixerCoords = BUILTIN_COORDS;
-    mixerNote.textContent = '기본 그림 위에 돌릴 노브를 표시합니다. 내 믹서 사진을 올리면 실제 사진 위에서 안내받을 수 있어요.';
+    mixerNote.textContent = '내 믹서와 비슷한 모델을 골랐어요. 정확히 맞추려면 [📷 내 믹서 사진]을 선택해 직접 올릴 수 있어요.';
   }
 }
 mixerModel.addEventListener('change', () => setMixerModel(mixerModel.value));
@@ -1269,7 +1329,7 @@ agMixer.addEventListener('click', (e) => {
   nextCalib();
 });
 
-setMixerModel('builtin');
+setMixerModel('generic');
 
 // ---- 사용 가이드 투어 ----
 const guideBtn = $('guideBtn');

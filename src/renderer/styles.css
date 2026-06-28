@@ -398,15 +398,35 @@ body.simple .feedback { display: none; }
 .ag-advice.status-alarm { border-color: var(--red); background: rgba(255,93,108,.1); }
 .ag-note { color: var(--muted); font-size: 12px; margin-top: 16px; line-height: 1.6; }
 
+/* 소리 입력 선택 */
+.ag-source {
+  background: var(--bg2); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px; margin-bottom: 18px; display: flex; flex-direction: column; gap: 10px;
+}
+.ag-source-title { font-weight: 700; font-size: 14px; }
+.ag-source select { background: var(--card2); color: var(--text); border: 1px solid var(--line2); border-radius: 8px; padding: 7px 9px; }
+.src-note { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.src-note.iface { color: var(--green); }
+
+/* 디지털 업그레이드 유도 */
+.ag-upgrade {
+  margin: 0 24px 26px; padding: 16px 20px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(91,140,255,.14), rgba(138,107,255,.12));
+  border: 1px solid rgba(91,140,255,.35); color: var(--text); font-size: 14px; line-height: 1.6;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: 1132px;
+  margin-left: auto; margin-right: auto;
+}
+.ag-upgrade .btn { margin-left: auto; flex: none; }
+
 /* 믹서 사진/그림 + 노브 위치 매핑 */
 .ag-mixer-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .ag-mixer-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .ag-mixer-head select { background: var(--card2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
 .ag-mixer {
-  position: relative; width: 100%; max-width: 560px;
+  position: relative; display: inline-block; max-width: 100%;
   border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #20263a;
 }
-.mixer-canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+.mixer-canvas { display: block; width: auto; height: auto; max-width: 100%; max-height: 560px; cursor: crosshair; }
 .calib-dot {
   position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
   background: rgba(91,140,255,.95); color: #fff; border: 2px solid #fff;

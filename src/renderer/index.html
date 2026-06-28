@@ -275,6 +275,17 @@
     </div>
     <div class="ag-body">
       <div class="ag-left">
+        <!-- 소리 입력 선택 -->
+        <div class="ag-source">
+          <div class="ag-source-title">🎧 소리를 어떻게 감지할까요?</div>
+          <label class="inline" style="width:100%;">
+            <select id="audioDevice" style="flex:1;">
+              <option value="">기본 입력 (자동)</option>
+            </select>
+          </label>
+          <div id="sourceNote" class="src-note">🎤 내장 마이크 — 기본 분석. <b>더 정확한 분석을 위해 USB 오디오 인터페이스를 권장합니다.</b></div>
+        </div>
+
         <div class="ag-readouts">
           <div class="ro"><span>입력 레벨</span><div class="ag-meter"><div id="agLevel" class="ag-level"></div></div></div>
           <div class="ro"><span>주요 주파수</span><b id="agFreq">—</b></div>
@@ -286,24 +297,32 @@
       </div>
       <div class="ag-mixer-wrap">
         <div class="ag-mixer-head">
-          <label class="inline">믹서
+          <label class="inline">믹서 모델
             <select id="mixerModel">
-              <option value="builtin">기본 믹서 그림</option>
-              <option value="custom">내 믹서 사진</option>
+              <option value="generic">일반 채널 스트립</option>
+              <option value="yamaha">Yamaha MG 시리즈</option>
+              <option value="behringer">Behringer Xenyx</option>
+              <option value="mackie">Mackie ProFX</option>
+              <option value="custom">📷 내 믹서 사진</option>
             </select>
           </label>
           <input id="mixerPhoto" type="file" accept="image/*" class="hidden" />
-          <button id="uploadPhoto" class="btn small">📷 사진 업로드</button>
-          <button id="calibBtn" class="btn small ghost">📍 노브 위치 지정</button>
+          <button id="uploadPhoto" class="btn small hidden">📷 사진 업로드</button>
+          <button id="calibBtn" class="btn small ghost hidden">📍 노브 위치 지정</button>
         </div>
         <div class="ag-mixer" id="agMixer">
           <img id="mixerCanvas" class="mixer-canvas" alt="믹서" />
           <div class="knob-hi hidden" id="knobHi"><span class="khi-arrow"></span></div>
           <div class="calib-hint hidden" id="calibHint"></div>
         </div>
-        <p class="ag-note" id="mixerNote">기본 그림 위에 돌릴 노브를 표시합니다. 내 믹서 사진을
-          올리고 노브 위치를 한 번 지정하면, 실제 믹서 사진 위에서 안내받을 수 있어요.</p>
+        <p class="ag-note" id="mixerNote">내 믹서와 비슷한 모델을 고르면 그 그림 위에 돌릴 노브를 표시합니다.</p>
       </div>
+    </div>
+    <!-- 디지털 업그레이드 유도 -->
+    <div class="ag-upgrade">
+      💡 <b>디지털 믹서(X32)로 업그레이드</b>하면 이 모든 것이 <b>자동</b>으로 됩니다 —
+      채널·EQ 조정, 장면 전환, 피드백 억제까지 클릭 몇 번으로.
+      <button id="agToDigital" class="btn small primary">디지털 믹서 보기</button>
     </div>
   </div>
 

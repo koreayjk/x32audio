@@ -62,44 +62,50 @@
    * @returns {{knob,dir,amount,text,status}}
    *   knob: 돌릴 노브, dir: 'up'|'down'|null, amount: 'small'|'big', status: 'good'|'warn'|'alarm'
    */
+  function turnWord(dir) { return dir === 'down' ? '왼쪽으로' : '오른쪽으로'; }
+  function mk(knob, dir, amountDb, freq, status, text) {
+    return { knob, dir, amount: Math.abs(amountDb) >= 5 ? 'big' : 'small', amountDb, freq, status, text };
+  }
+
   function adviceFor(m) {
     // 1) 무음
     if (m.level < 0.02) {
-      return { knob: null, dir: null, amount: null, status: 'good', text: '소리가 거의 없습니다. 마이크에 대고 말하거나 연주해 보세요.' };
+      return { knob: null, dir: null, amount: null, amountDb: 0, freq: null, status: 'good',
+        text: '소리가 거의 없습니다. 마이크에 대고 말하거나 연주해 보세요.' };
     }
-    // 2) 입력 과다(클립 위험) → GAIN ↓
+    // 2) 입력 과다(찢어짐 위험) → GAIN ↓
     if (m.level > 0.45) {
-      return { knob: 'gain', dir: 'down', amount: 'big', status: 'alarm',
-        text: '입력이 너무 큽니다. GAIN(게인) 노브를 왼쪽으로 크게 줄이세요.' };
+      return mk('gain', 'down', -6, null, 'alarm',
+        '🔴 소리가 너무 큽니다 — GAIN(게인) 노브를 왼쪽으로 많이 돌리세요 (약 -6dB).');
     }
     // 3) 하울링(피드백) → 해당 대역 EQ ↓
     if (m.feedback) {
       const knob = bandKnob(m.domHz);
-      return { knob, dir: 'down', amount: 'big', status: 'alarm',
-        text: `⚠ 하울링 의심 (약 ${m.domHz}Hz). ${KNOB_KO[knob]} 노브를 왼쪽으로 줄이세요.` };
+      return mk(knob, 'down', -6, m.domHz, 'alarm',
+        `⚠ 하울링(삐— 소리) 감지! 약 ${m.domHz}Hz — ${KNOB_KO[knob]} 노브를 왼쪽으로 조금 돌리세요 (약 -6dB).`);
     }
     // 4) 입력 과소 → GAIN ↑
     if (m.level < 0.06) {
-      return { knob: 'gain', dir: 'up', amount: 'small', status: 'warn',
-        text: '입력이 작습니다. GAIN(게인) 노브를 오른쪽으로 조금 올리세요.' };
+      return mk('gain', 'up', 3, null, 'warn',
+        '🔉 소리가 작습니다 — GAIN(게인) 노브를 오른쪽으로 조금 올리세요 (약 +3dB).');
     }
-    // 5) 음색 균형
+    // 5) 음색 균형 — 어느 대역이 센지 알려주고 그 노브를 줄이게
     if (m.lowProp > 0.55) {
-      return { knob: 'low', dir: 'down', amount: 'small', status: 'warn',
-        text: '저음이 너무 많아 웅웅거립니다. LOW(저음) 노브를 살짝 줄이세요.' };
+      return mk('low', 'down', -3, 120, 'warn',
+        '저음이 많아 웅웅거려요 — LOW(저음) 노브를 왼쪽으로 살짝 돌리세요 (약 -3dB).');
     }
     if (m.highProp > 0.45) {
-      return { knob: 'high', dir: 'down', amount: 'small', status: 'warn',
-        text: '고음이 날카롭습니다. HIGH(고음) 노브를 살짝 줄이세요.' };
+      return mk('high', 'down', -3, (m.domHz >= 2000 ? m.domHz : 4000), 'warn',
+        '고음이 날카로워요 — HIGH(고음) 노브를 왼쪽으로 살짝 돌리세요 (약 -3dB).');
     }
     if (m.midProp > 0.62) {
-      return { knob: 'mid', dir: 'down', amount: 'small', status: 'warn',
-        text: '중음이 답답합니다(먹먹/콧소리). MID(중음) 노브를 살짝 줄이세요.' };
+      return mk('mid', 'down', -3, 1000, 'warn',
+        '중음이 답답해요(먹먹/콧소리) — MID(중음) 노브를 왼쪽으로 살짝 돌리세요 (약 -3dB).');
     }
     // 6) 양호
-    return { knob: null, dir: null, amount: null, status: 'good',
+    return { knob: null, dir: null, amount: null, amountDb: 0, freq: null, status: 'good',
       text: '✓ 균형이 좋습니다. 지금 상태를 유지하세요.' };
   }
 
-  return { analyze, adviceFor, bandKnob, KNOB_KO };
+  return { analyze, adviceFor, bandKnob, turnWord, KNOB_KO };
 });
