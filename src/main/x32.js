@@ -13,9 +13,21 @@ const {
 const util = require('./x32-util');
 
 const KEEPALIVE_MS = 8000;       // /xremote, 미터 재구독 주기 (X32 구독은 10초 후 만료)
-const DEFAULT_METER_BANK = '/meters/15'; // RTA (피드백 감지에 사용)
-const LOUDNESS_BANK = '/meters/5';       // 믹스 버스 미터 (방송 LUFS 측정에 사용)
 const LOUDNESS_FRAMES_PER_TICK = 40;     // 약 2초마다 보정 (미터 ~50ms 가정)
+
+/**
+ * 주소 프로파일 — X32 계열 콘솔 간 다른 주소/포트만 모아둔다.
+ * X-Air 등 파생 어댑터는 이 프로파일만 바꿔 X32 로직을 재사용한다.
+ */
+const X32_PROFILE = {
+  id: 'x32',
+  port: 10023,
+  channelCount: 32,
+  feedbackBank: '/meters/15',          // RTA (피드백)
+  loudnessBank: '/meters/5',           // 믹스 버스 미터 (방송 LUFS)
+  main: { fader: '/main/st/mix/fader', on: '/main/st/mix/on' },
+  busPrefix: (bus) => `/bus/${util.chId(bus)}`, // /bus/01 .. /bus/16
+};
 
 /**
  * X32 미터/RTA 블롭 파싱.
@@ -55,8 +67,9 @@ class X32Manager extends MixerAdapter {
     };
   }
 
-  constructor() {
+  constructor(profile) {
     super();
+    this.profile = profile || X32_PROFILE;
     this.bus = new OscBus();
     this.detector = new FeedbackDetector();
     this.suppressor = new FeedbackSuppressor((addr, args) => {
@@ -66,9 +79,9 @@ class X32Manager extends MixerAdapter {
     this.connected = false;
     this.info = null;
     this.host = null;
-    this.port = 10023;
+    this.port = this.profile.port;
     this.channelMap = DEFAULT_CHANNEL_MAP;
-    this.meterBank = DEFAULT_METER_BANK;
+    this.meterBank = this.profile.feedbackBank;
     this.outputs = { ...DEFAULT_OUTPUTS };
     this.sermonDucked = false;
     this.loudness = new LoudnessController();
@@ -92,8 +105,8 @@ class X32Manager extends MixerAdapter {
     this.suppressor.on('suppressed', (info) => this.emit('suppress-info', info));
   }
 
-  /** X32 에 연결하고 정보를 확인한다. 실패 시 throw. */
-  async connect(host, port = 10023) {
+  /** 콘솔에 연결하고 정보를 확인한다. 실패 시 throw. */
+  async connect(host, port = this.profile.port) {
     this.disconnect();
     this.host = host;
     this.port = port;
@@ -296,7 +309,7 @@ class X32Manager extends MixerAdapter {
   /** 예배 시작: 세 출력을 한 번에 세팅. */
   applyServiceStart() {
     if (!this.connected) throw new Error('연결되지 않았습니다.');
-    const actions = buildServiceStartActions(this.channelMap, this.outputs);
+    const actions = buildServiceStartActions(this.channelMap, this.outputs, this.profile);
     for (const a of actions) this.bus.send(a.address, a.args);
     this.sermonDucked = false;
     this.emit('service-started', { count: actions.length, outputs: this.outputs });
@@ -306,7 +319,7 @@ class X32Manager extends MixerAdapter {
   /** 설교 모드: 방송 버스에서 악기/반주 레벨을 자동으로 낮추거나 복원. */
   setSermonBroadcastDuck(on, duckDb) {
     if (!this.connected) throw new Error('연결되지 않았습니다.');
-    const actions = buildSermonBroadcastDuck(this.channelMap, this.outputs, !!on, duckDb);
+    const actions = buildSermonBroadcastDuck(this.channelMap, this.outputs, !!on, duckDb, this.profile);
     for (const a of actions) this.bus.send(a.address, a.args);
     this.sermonDucked = !!on;
     this.emit('sermon-duck', { on: this.sermonDucked, count: actions.length });
@@ -323,14 +336,14 @@ class X32Manager extends MixerAdapter {
     this._loudFrames = 0;
 
     // 현재 방송 버스 마스터 dB 로 초기화
-    const faderAddr = `/bus/${util.chId(this.outputs.broadcastBus)}/mix/fader`;
+    const faderAddr = `${this.profile.busPrefix(this.outputs.broadcastBus)}/mix/fader`;
     try {
       const a = await this.bus.query(faderAddr);
       this._loudMasterDb = typeof a[0] === 'number' ? util.faderToDb(a[0]) : 0;
     } catch (_) { this._loudMasterDb = 0; }
 
     this._loudActive = true;
-    this._addMeterBank(LOUDNESS_BANK, (raw) => {
+    this._addMeterBank(this.profile.loudnessBank, (raw) => {
       const idx = this.outputs.broadcastBus - 1;
       const lvl = raw[idx] != null ? raw[idx] : 0;
       this.loudness.pushLevel(lvl < 0 ? Math.pow(10, lvl / 20) : lvl);
@@ -353,7 +366,7 @@ class X32Manager extends MixerAdapter {
 
   stopBroadcastLoudness() {
     this._loudActive = false;
-    this._removeMeterBank(LOUDNESS_BANK);
+    this._removeMeterBank(this.profile.loudnessBank);
     this.loudness.reset();
   }
 
@@ -478,4 +491,4 @@ class X32Manager extends MixerAdapter {
   }
 }
 
-module.exports = { X32Manager, parseMeterBlob, normalizeSpectrum };
+module.exports = { X32Manager, X32_PROFILE, parseMeterBlob, normalizeSpectrum };

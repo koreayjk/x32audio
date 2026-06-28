@@ -40,22 +40,25 @@ const SERVICE_MIX = {
 /** 설교 시 방송 버스에서 악기를 낮추는 기본 감쇠량(dB). */
 const SERMON_DUCK_DB = -12;
 
-function busAddr(bus) {
-  return `/bus/${chId(bus)}`;
-}
+// 주소 프로파일 기본값(X32). X-Air 등은 어댑터가 다른 프로파일을 넘긴다.
+const DEFAULT_PROFILE = {
+  main: { fader: '/main/st/mix/fader', on: '/main/st/mix/on' },
+  busPrefix: (bus) => `/bus/${chId(bus)}`,
+};
 
 /**
  * 예배 시작: Main LR + 방송 Bus + 모니터 Bus 를 동시에 세팅하는 OSC 명령 목록.
  * @param {Array} channelMap [{ch,name,role}]
  * @param {object} outputs { broadcastBus, monitorBus }
  */
-function buildServiceStartActions(channelMap, outputs = DEFAULT_OUTPUTS) {
+function buildServiceStartActions(channelMap, outputs = DEFAULT_OUTPUTS, profile = DEFAULT_PROFILE) {
   const { broadcastBus, monitorBus } = outputs;
+  const busAddr = profile.busPrefix;
   const actions = [];
 
   // 버스 마스터/메인 켜고 0dB
-  actions.push({ address: '/main/st/mix/on', args: [i(1)] });
-  actions.push({ address: '/main/st/mix/fader', args: [f(dbToFader(0))] });
+  actions.push({ address: profile.main.on, args: [i(1)] });
+  actions.push({ address: profile.main.fader, args: [f(dbToFader(0))] });
   for (const bus of [broadcastBus, monitorBus]) {
     actions.push({ address: `${busAddr(bus)}/mix/on`, args: [i(1)] });
     actions.push({ address: `${busAddr(bus)}/mix/fader`, args: [f(dbToFader(0))] });
@@ -90,7 +93,7 @@ function buildServiceStartActions(channelMap, outputs = DEFAULT_OUTPUTS) {
  * (본당/모니터는 그대로 두어 찬양팀과 회중 경험은 유지)
  * @param {boolean} duck  true=낮춤, false=원래대로 복원
  */
-function buildSermonBroadcastDuck(channelMap, outputs = DEFAULT_OUTPUTS, duck = true, duckDb = SERMON_DUCK_DB) {
+function buildSermonBroadcastDuck(channelMap, outputs = DEFAULT_OUTPUTS, duck = true, duckDb = SERMON_DUCK_DB, _profile = DEFAULT_PROFILE) {
   const bb = chId(outputs.broadcastBus);
   const actions = [];
   for (const entry of channelMap) {

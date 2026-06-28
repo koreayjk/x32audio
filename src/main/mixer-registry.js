@@ -1,6 +1,7 @@
 'use strict';
 
 const { X32Manager } = require('./x32');
+const { XAirAdapter } = require('./xair');
 
 /**
  * 지원/예정 믹서 레지스트리.
@@ -11,7 +12,7 @@ const { X32Manager } = require('./x32');
  */
 const MIXERS = [
   { id: 'x32', brand: 'Behringer / Midas', name: 'X32 / M32', status: 'supported', kind: 'digital', note: 'OSC로 직접 제어 · 모든 자동화 기능', make: () => new X32Manager() },
-  { id: 'xair', brand: 'Behringer', name: 'X-Air (XR12/16/18)', status: 'planned', kind: 'digital', note: 'X32와 유사한 OSC — 우선 지원 예정' },
+  { id: 'xair', brand: 'Behringer', name: 'X-Air (XR12/16/18)', status: 'supported', kind: 'digital', note: 'X32와 동일 계열 OSC (포트 10024) · 베타', make: () => new XAirAdapter() },
   { id: 'wing', brand: 'Behringer', name: 'Wing', status: 'planned', kind: 'digital', note: 'OSC(주소 체계 상이)' },
   { id: 'yamaha', brand: 'Yamaha', name: 'TF / CL / QL', status: 'planned', kind: 'digital', note: '자체 프로토콜' },
   { id: 'allenheath', brand: 'Allen & Heath', name: 'SQ / Avantis / dLive', status: 'planned', kind: 'digital', note: 'TCP 기반 자체 제어' },

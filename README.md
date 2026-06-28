@@ -179,7 +179,12 @@ MixerAdapter (mixer-base.js)         ← 공통 계약 + capabilities
 | 콘솔 | 상태 |
 |------|------|
 | Behringer/Midas **X32 / M32** | ✅ 지원 |
-| Behringer **X-Air**, **Wing** / Yamaha / Allen&Heath / PreSonus | 🚧 추후 지원 예정 |
+| Behringer **X-Air** (XR12/16/18·X18·MR18) | ✅ 지원(베타) — 포트 10024, 메인 `/lr`, 버스 `/bus/1‑6` |
+| Behringer **Wing** / Yamaha / Allen&Heath / PreSonus | 🚧 추후 지원 예정 |
+
+> X-Air 는 X32 와 동일 계열 OSC라, X32 로직을 그대로 상속하고 **주소 프로파일**
+> (`xair.js` 의 `XAIR_PROFILE`)만 바꿔 구현했습니다. 미터 뱅크 등 일부 값은
+> 실제 하드웨어에서 확인을 권장합니다.
 
 ## 로드맵 (이후 단계)
 

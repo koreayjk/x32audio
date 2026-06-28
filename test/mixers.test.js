@@ -7,14 +7,16 @@ const { MixerAdapter } = require('../src/main/mixer-base');
 const { listMixers, createMixer } = require('../src/main/mixer-registry');
 const { X32Manager } = require('../src/main/x32');
 
-test('레지스트리: X32 는 지원, 나머지는 예정', () => {
+test('레지스트리: X32·X-Air 지원, 나머지는 예정', () => {
   const list = listMixers();
   assert.ok(list.length >= 5);
-  const x32 = list.find((m) => m.id === 'x32');
-  assert.strictEqual(x32.supported, true);
-  assert.strictEqual(x32.status, 'supported');
-  // 그 외 디지털은 예정
-  const planned = list.filter((m) => m.id !== 'x32');
+  for (const id of ['x32', 'xair']) {
+    const m = list.find((x) => x.id === id);
+    assert.strictEqual(m.supported, true, `${id} 지원`);
+    assert.strictEqual(m.status, 'supported');
+  }
+  // 나머지는 추후 지원 예정
+  const planned = list.filter((m) => !['x32', 'xair'].includes(m.id));
   assert.ok(planned.length >= 1);
   for (const m of planned) assert.strictEqual(m.supported, false);
 });
