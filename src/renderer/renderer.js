@@ -607,6 +607,7 @@ const chRows = new Map(); // ch -> { tr, data }
 // ---- 다국어(i18n) ----
 const I18N = {
   ko: {
+    mixerSelect: '믹서 선택',
     undo: '되돌리기', backup: '백업', restore: '복원', remote: '원격 조작', simple: '쉬운 모드',
     channels: '채널 상태', live: '실시간', chCount: '채널 수', cue: '예배 순서 큐', feedback: '피드백 감지',
     scenes: 'Scene 템플릿', custom: '사용자 정의 Scene', close: '닫기', micPreset: '인물별 마이크 프리셋',
@@ -620,6 +621,7 @@ const I18N = {
     sermonMode: '설교 모드(방송 악기 ↓)', loudnessMode: '방송 자동 레벨 (LUFS −14)',
   },
   en: {
+    mixerSelect: 'Mixer',
     undo: 'Undo', backup: 'Backup', restore: 'Restore', remote: 'Remote', simple: 'Simple mode',
     channels: 'Channels', live: 'Live', chCount: 'Count', cue: 'Service Cue', feedback: 'Feedback',
     scenes: 'Scene Templates', custom: 'Custom Scenes', close: 'Close', micPreset: 'Mic Presets (per person)',
@@ -908,6 +910,115 @@ function setServiceEnabled(on) {
   }
 }
 
+// ==== 믹서 선택 + 아날로그 믹서 가이드 ====
+const mixerBtn = $('mixerBtn');
+const mixerSelect = $('mixerSelect');
+const msX32 = $('msX32');
+const msAnalog = $('msAnalog');
+const analogGuide = $('analogGuide');
+const agBack = $('agBack');
+const agMic = $('agMic');
+const agLevel = $('agLevel');
+const agFreq = $('agFreq');
+const agBalance = $('agBalance');
+const agAdvice = $('agAdvice');
+const MIXER_KEY = 'x32_mixer_type';
+
+mixerBtn.addEventListener('click', () => mixerSelect.classList.remove('hidden'));
+msX32.addEventListener('click', () => {
+  try { localStorage.setItem(MIXER_KEY, 'digital-x32'); } catch (_) { /* ignore */ }
+  mixerSelect.classList.add('hidden');
+  analogGuide.classList.add('hidden');
+});
+msAnalog.addEventListener('click', () => {
+  try { localStorage.setItem(MIXER_KEY, 'analog'); } catch (_) { /* ignore */ }
+  mixerSelect.classList.add('hidden');
+  analogGuide.classList.remove('hidden');
+});
+agBack.addEventListener('click', () => {
+  stopAnalog();
+  analogGuide.classList.add('hidden');
+  mixerSelect.classList.remove('hidden');
+});
+
+// 마이크 실시간 분석
+let agStream = null;
+let agCtx = null;
+let agAnalyser = null;
+let agRAF = null;
+let agLevelSmoothed = 0;
+
+agMic.addEventListener('click', () => { if (agStream) stopAnalog(); else startAnalog(); });
+
+async function startAnalog() {
+  try {
+    agStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
+  } catch (err) {
+    showToast('마이크를 사용할 수 없습니다: ' + errMsg(err), 'err');
+    return;
+  }
+  agCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const srcNode = agCtx.createMediaStreamSource(agStream);
+  agAnalyser = agCtx.createAnalyser();
+  agAnalyser.fftSize = 2048;
+  agAnalyser.smoothingTimeConstant = 0.6;
+  srcNode.connect(agAnalyser);
+  agMic.textContent = '■ 마이크 중지';
+  agMic.classList.add('active');
+  const freqData = new Uint8Array(agAnalyser.frequencyBinCount);
+  const loop = () => {
+    if (!agAnalyser) return;
+    agAnalyser.getByteFrequencyData(freqData);
+    const m = window.AnalogAdvice.analyze(freqData, agCtx.sampleRate);
+    const adv = window.AnalogAdvice.adviceFor(m);
+    renderAnalog(m, adv);
+    agRAF = requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+function stopAnalog() {
+  if (agRAF) { cancelAnimationFrame(agRAF); agRAF = null; }
+  if (agStream) { agStream.getTracks().forEach((t) => t.stop()); agStream = null; }
+  if (agCtx) { agCtx.close().catch(() => {}); agCtx = null; }
+  agAnalyser = null;
+  agMic.textContent = '🎤 마이크 시작';
+  agMic.classList.remove('active');
+  document.querySelectorAll('.knob-wrap.active').forEach((k) => k.classList.remove('active', 'alarm'));
+}
+
+function renderAnalog(m, adv) {
+  agLevelSmoothed = agLevelSmoothed * 0.7 + m.level * 0.3;
+  agLevel.style.width = `${Math.min(100, Math.round(agLevelSmoothed * 180))}%`;
+  const quiet = m.level < 0.02;
+  agFreq.textContent = quiet ? '—' : (m.domHz >= 1000 ? `${(m.domHz / 1000).toFixed(1)}kHz` : `${m.domHz}Hz`);
+  agBalance.textContent = quiet ? '—' : balanceText(m);
+  agAdvice.textContent = adv.text;
+  agAdvice.className = `ag-advice status-${adv.status}`;
+  document.querySelectorAll('.knob-wrap').forEach((k) => {
+    const on = adv.knob === k.dataset.knob;
+    k.classList.toggle('active', on);
+    k.classList.toggle('alarm', on && adv.status === 'alarm');
+    if (on) {
+      k.setAttribute('data-arrow', adv.dir === 'down' ? '↺' : '↻');
+      const ind = k.querySelector('.ind');
+      if (ind) ind.style.transform = `translateX(-50%) rotate(${adv.dir === 'down' ? -40 : 40}deg)`;
+    } else {
+      k.removeAttribute('data-arrow');
+    }
+  });
+}
+
+function balanceText(m) {
+  const mx = Math.max(m.lowProp, m.midProp, m.highProp);
+  if (mx === m.lowProp) return '저음 우세';
+  if (mx === m.highProp) return '고음 우세';
+  if (m.midProp > 0.4) return '중음 우세';
+  return '균형';
+}
+
 // ---- 사용 가이드 투어 ----
 const guideBtn = $('guideBtn');
 const tour = $('tour');
@@ -1045,8 +1156,14 @@ document.addEventListener('keydown', (e) => {
   if (status.connected) setConnected(status.info);
   else setDisconnected();
 
-  // 처음 실행 시 가이드 자동 표시
-  let seen = false;
-  try { seen = localStorage.getItem(GUIDE_SEEN_KEY) === '1'; } catch (_) { /* ignore */ }
-  if (!seen) setTimeout(() => openTour(0), 400);
+  // 처음 실행 시: 믹서 선택 화면 먼저, 이후 가이드 투어
+  let mixerType = null;
+  try { mixerType = localStorage.getItem(MIXER_KEY); } catch (_) { /* ignore */ }
+  if (!mixerType) {
+    mixerSelect.classList.remove('hidden');
+  } else {
+    let seen = false;
+    try { seen = localStorage.getItem(GUIDE_SEEN_KEY) === '1'; } catch (_) { /* ignore */ }
+    if (!seen && mixerType === 'digital-x32') setTimeout(() => openTour(0), 400);
+  }
 })();

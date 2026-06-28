@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, session } = require('electron');
 const path = require('path');
 const { X32Manager } = require('./x32');
 const { listScenes } = require('./scenes');
@@ -29,6 +29,11 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false,
     },
+  });
+
+  // 아날로그 가이드의 마이크 분석을 위해 미디어 권한 허용
+  session.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
+    callback(permission === 'media' || permission === 'audioCapture');
   });
 
   win.removeMenu();

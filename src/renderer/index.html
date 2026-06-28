@@ -39,6 +39,8 @@
 
   <!-- 도구 모음 -->
   <div class="toolbar">
+    <button id="mixerBtn" class="btn small ghost" title="믹서 종류 선택">🎚 <span data-i18n="mixerSelect">믹서 선택</span></button>
+    <span class="tb-sep"></span>
     <button id="undoBtn" class="btn small ghost" disabled title="직전 상태로 되돌리기">↩ <span data-i18n="undo">되돌리기</span></button>
     <span class="tb-sep"></span>
     <button id="backupBtn" class="btn small ghost">💾 <span data-i18n="backup">백업</span></button>
@@ -241,9 +243,73 @@
     </div>
   </div>
 
+  <!-- 믹서 선택 화면 -->
+  <div id="mixerSelect" class="fullscreen hidden">
+    <div class="ms-inner">
+      <h1 class="ms-title">🎛️ 믹서를 선택하세요</h1>
+      <p class="ms-sub">사용 중인 믹서 종류를 고르면 맞춤 화면으로 안내합니다.</p>
+      <div class="ms-grid">
+        <div class="ms-cat">
+          <h2>디지털 믹서</h2>
+          <button class="ms-opt" id="msX32">
+            <span class="ms-ic">🎚️</span>
+            <b>Behringer X32 / M32</b>
+            <span class="ms-badge ok">지원</span>
+            <p>OSC로 직접 제어 · 모든 자동화 기능</p>
+          </button>
+          <button class="ms-opt disabled" disabled>
+            <span class="ms-ic">🎛️</span>
+            <b>기타 디지털 믹서</b>
+            <span class="ms-badge soon">추후 지원 예정</span>
+            <p>Yamaha · Allen &amp; Heath · Midas 등</p>
+          </button>
+        </div>
+        <div class="ms-cat">
+          <h2>아날로그 믹서</h2>
+          <button class="ms-opt" id="msAnalog">
+            <span class="ms-ic">🎙️</span>
+            <b>아날로그 믹서 가이드</b>
+            <span class="ms-badge beta">베타</span>
+            <p>컴퓨터 마이크로 소리를 분석해<br>어떤 노브를 얼마나 돌릴지 시각 안내</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 아날로그 믹서 가이드 -->
+  <div id="analogGuide" class="fullscreen hidden">
+    <div class="ag-bar">
+      <button id="agBack" class="btn ghost">← 믹서 선택</button>
+      <h2>🎙️ 아날로그 믹서 가이드</h2>
+      <button id="agMic" class="btn primary">🎤 마이크 시작</button>
+    </div>
+    <div class="ag-body">
+      <div class="ag-left">
+        <div class="ag-readouts">
+          <div class="ro"><span>입력 레벨</span><div class="ag-meter"><div id="agLevel" class="ag-level"></div></div></div>
+          <div class="ro"><span>주요 주파수</span><b id="agFreq">—</b></div>
+          <div class="ro"><span>음색 균형</span><b id="agBalance">—</b></div>
+        </div>
+        <div id="agAdvice" class="ag-advice status-good">마이크를 시작하면 실시간 분석이 시작됩니다.</div>
+        <p class="ag-note">※ 컴퓨터 마이크로 현장 소리를 듣고 분석합니다. 믹서 채널 스트립의
+          노브 위치를 참고해 안내대로 돌려보세요.</p>
+      </div>
+      <div class="ag-strip">
+        <div class="strip-title">채널 스트립</div>
+        <div class="knob-wrap" data-knob="gain"><div class="knob"><span class="ind"></span></div><label>GAIN</label></div>
+        <div class="knob-wrap" data-knob="high"><div class="knob"><span class="ind"></span></div><label>HIGH</label></div>
+        <div class="knob-wrap" data-knob="mid"><div class="knob"><span class="ind"></span></div><label>MID</label></div>
+        <div class="knob-wrap" data-knob="low"><div class="knob"><span class="ind"></span></div><label>LOW</label></div>
+        <div class="fader-wrap"><div class="fader-track"><div class="fader-knob"></div></div><label>FADER</label></div>
+      </div>
+    </div>
+  </div>
+
   <!-- 토스트 -->
   <div id="toast" class="toast hidden"></div>
 
+  <script src="analog-advice.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

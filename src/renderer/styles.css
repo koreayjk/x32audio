@@ -315,6 +315,94 @@ body.simple .feedback { display: none; }
 .iconbtn:hover { background: #39426a; }
 .iconbtn:disabled { opacity: .35; cursor: not-allowed; }
 
+/* ---- 전체 화면 오버레이 (믹서 선택 / 아날로그) ---- */
+.fullscreen {
+  position: fixed; inset: 0; z-index: 100; overflow-y: auto;
+  background: radial-gradient(900px 500px at 50% 0, #20263a, #14171f 70%);
+}
+
+/* 믹서 선택 */
+.ms-inner { max-width: 920px; margin: 0 auto; padding: 60px 24px; text-align: center; }
+.ms-title { font-size: 34px; }
+.ms-sub { color: var(--muted); margin: 12px 0 40px; font-size: 16px; }
+.ms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; text-align: left; }
+.ms-cat h2 { font-size: 16px; color: var(--muted); margin-bottom: 14px; font-weight: 600; }
+.ms-opt {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 22px; margin-bottom: 14px; color: var(--text); position: relative;
+  transition: border-color .15s, transform .15s, background .15s;
+}
+.ms-opt:hover:not(.disabled) { border-color: var(--primary); transform: translateY(-3px); }
+.ms-opt .ms-ic { font-size: 34px; display: block; margin-bottom: 10px; }
+.ms-opt b { font-size: 18px; }
+.ms-opt p { color: var(--muted); font-size: 13px; margin-top: 8px; line-height: 1.5; }
+.ms-opt.disabled { opacity: .55; cursor: not-allowed; }
+.ms-badge {
+  position: absolute; top: 18px; right: 18px; font-size: 11px; font-weight: 700;
+  padding: 4px 10px; border-radius: 12px;
+}
+.ms-badge.ok { background: rgba(62,207,142,.18); color: var(--green); }
+.ms-badge.soon { background: #333a52; color: var(--muted); }
+.ms-badge.beta { background: rgba(255,180,84,.18); color: var(--amber); }
+
+/* 아날로그 가이드 */
+.ag-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 22px; border-bottom: 1px solid var(--line); background: var(--bg2);
+}
+.ag-bar h2 { font-size: 18px; }
+.ag-body { display: grid; grid-template-columns: 1fr 360px; gap: 26px; padding: 30px 24px; max-width: 1000px; margin: 0 auto; }
+.ag-readouts { display: flex; flex-direction: column; gap: 14px; }
+.ag-readouts .ro { display: flex; align-items: center; gap: 12px; }
+.ag-readouts .ro > span { width: 92px; color: var(--muted); font-size: 13px; }
+.ag-readouts .ro b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.ag-meter { flex: 1; height: 14px; background: var(--bg2); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.ag-level { height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--amber), var(--red)); transition: width .08s; }
+.ag-advice {
+  margin-top: 24px; padding: 20px; border-radius: 12px; font-size: 17px; font-weight: 600; line-height: 1.5;
+  border: 1px solid var(--line); background: var(--card);
+}
+.ag-advice.status-good { border-color: var(--green); }
+.ag-advice.status-warn { border-color: var(--amber); }
+.ag-advice.status-alarm { border-color: var(--red); background: rgba(255,93,108,.1); }
+.ag-note { color: var(--muted); font-size: 12px; margin-top: 16px; line-height: 1.6; }
+
+/* 믹서 채널 스트립 + 노브 */
+.ag-strip {
+  background: linear-gradient(180deg, #2a3145, #20263a); border: 1px solid var(--line);
+  border-radius: 14px; padding: 22px; display: flex; flex-direction: column; align-items: center; gap: 18px;
+}
+.strip-title { color: var(--muted); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+.knob-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
+.knob {
+  width: 60px; height: 60px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #4a536e, #2b3147);
+  border: 2px solid #1a1e2a; box-shadow: 0 4px 10px rgba(0,0,0,.4);
+  position: relative; transition: box-shadow .2s, border-color .2s;
+}
+.knob .ind {
+  position: absolute; left: 50%; top: 7px; width: 3px; height: 18px; border-radius: 2px;
+  background: #cdd6f0; transform-origin: 50% 23px; transform: translateX(-50%) rotate(0deg);
+}
+.knob-wrap label { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .5px; }
+.knob-wrap.active .knob { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(255,180,84,.35), 0 0 18px rgba(255,180,84,.5); }
+.knob-wrap.active.alarm .knob { border-color: var(--red); box-shadow: 0 0 0 3px rgba(255,93,108,.4), 0 0 20px rgba(255,93,108,.6); }
+.knob-wrap.active label { color: var(--amber); }
+.knob-wrap.active::after {
+  content: attr(data-arrow); position: absolute; right: -34px; top: 16px;
+  font-size: 22px; font-weight: 800; color: var(--amber);
+}
+.knob-wrap.active.alarm::after { color: var(--red); }
+.fader-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
+.fader-track { width: 12px; height: 90px; background: #1a1e2a; border-radius: 6px; position: relative; border: 1px solid var(--line); }
+.fader-knob { position: absolute; left: -6px; top: 30%; width: 24px; height: 14px; background: #4a536e; border-radius: 4px; border: 1px solid #1a1e2a; }
+
+@media (max-width: 760px) {
+  .ms-grid { grid-template-columns: 1fr; }
+  .ag-body { grid-template-columns: 1fr; }
+}
+
 /* ---- 모달 ---- */
 .modal {
   position: fixed; inset: 0; background: rgba(8,10,16,.6);
