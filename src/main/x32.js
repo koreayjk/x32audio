@@ -3,6 +3,7 @@
 const { EventEmitter } = require('events');
 const { OscBus } = require('./osc-bus');
 const { FeedbackDetector } = require('./feedback');
+const { FeedbackSuppressor } = require('./suppressor');
 const { buildSceneActions, DEFAULT_CHANNEL_MAP } = require('./scenes');
 const util = require('./x32-util');
 
@@ -40,6 +41,10 @@ class X32Manager extends EventEmitter {
     super();
     this.bus = new OscBus();
     this.detector = new FeedbackDetector();
+    this.suppressor = new FeedbackSuppressor((addr, args) => {
+      if (this.bus.isOpen) this.bus.send(addr, args);
+    });
+    this.autoSuppress = false;
     this.connected = false;
     this.info = null;
     this.host = null;
@@ -52,8 +57,15 @@ class X32Manager extends EventEmitter {
     this.bus.on('message', (address, args) => this._onMessage(address, args));
     this.bus.on('error', (err) => this.emit('error', err));
 
-    this.detector.on('feedback', (alert) => this.emit('feedback', alert));
+    this.detector.on('feedback', (alert) => {
+      if (this.autoSuppress) {
+        const result = this.suppressor.suppress(alert.freq);
+        if (result) this.emit('suppressed', result);
+      }
+      this.emit('feedback', alert);
+    });
     this.detector.on('clear', (info) => this.emit('feedback-clear', info));
+    this.suppressor.on('suppressed', (info) => this.emit('suppress-info', info));
   }
 
   /** X32 에 연결하고 정보를 확인한다. 실패 시 throw. */
@@ -88,6 +100,8 @@ class X32Manager extends EventEmitter {
   disconnect() {
     this._stopKeepAlive();
     this.stopFeedback();
+    this.autoSuppress = false;
+    this.suppressor.reset();
     if (this.bus.isOpen) this.bus.close();
     const was = this.connected;
     this.connected = false;
@@ -236,6 +250,48 @@ class X32Manager extends EventEmitter {
     }
     this.emit('scene-applied', { sceneId, count: actions.length });
     return actions.length;
+  }
+
+  // ---- 사용자 정의 Scene (채널 on/fader 상태) ----
+
+  /**
+   * 현재 채널들의 on/fader 상태를 캡처한다. (사용자 정의 Scene 저장용)
+   * @returns {Promise<Array<{ch,on,fader}>>}
+   */
+  async captureState(count = 16) {
+    const strips = await this.readChannels(count);
+    return strips.map((s) => ({ ch: s.ch, on: s.on, fader: s.fader }));
+  }
+
+  /**
+   * 캡처된 채널 상태를 X32 에 적용한다.
+   * @param {Array<{ch,on,fader}>} states
+   * @returns {number} 전송한 명령 개수
+   */
+  applyChannelStates(states) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    let count = 0;
+    for (const st of states || []) {
+      const id = util.chId(st.ch);
+      if (typeof st.on === 'boolean') {
+        this.bus.send(`/ch/${id}/mix/on`, [util.i(st.on ? 1 : 0)]);
+        count++;
+      }
+      if (typeof st.fader === 'number') {
+        this.bus.send(`/ch/${id}/mix/fader`, [util.f(st.fader)]);
+        count++;
+      }
+    }
+    return count;
+  }
+
+  // ---- 자동 피드백 억제 ----
+
+  setAutoSuppress(enabled, options) {
+    if (options) this.suppressor.setOptions(options);
+    this.autoSuppress = !!enabled;
+    if (!enabled) this.suppressor.restoreAll();
+    return this.autoSuppress;
   }
 }
 

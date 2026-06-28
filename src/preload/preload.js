@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('x32api', {
   applyScene: (sceneId) => ipcRenderer.invoke('x32:apply-scene', { sceneId }),
   startFeedback: (options) => ipcRenderer.invoke('x32:start-feedback', options),
   stopFeedback: () => ipcRenderer.invoke('x32:stop-feedback'),
+  captureState: (count) => ipcRenderer.invoke('x32:capture-state', { count }),
+  applyStates: (states) => ipcRenderer.invoke('x32:apply-states', { states }),
+  setAutoSuppress: (enabled, options) => ipcRenderer.invoke('x32:auto-suppress', { enabled, options }),
   getStatus: () => ipcRenderer.invoke('x32:status'),
 
   // 이벤트 구독 (main → renderer)

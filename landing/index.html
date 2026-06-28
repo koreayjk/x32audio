@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>X32 교회 음향 — 음향 봉사를 클릭 몇 번으로</title>
+  <meta name="description" content="Behringer X32 믹서를 위한 교회 음향 자동화 데스크탑 앱. 원터치 Scene 전환, 예배 순서 큐, 실시간 피드백 감지·자동 억제. Windows/Mac 지원." />
+  <style>
+    :root {
+      --bg: #14171f; --bg2: #1b1f2a; --card: #232838; --line: #333a52;
+      --text: #eef1f8; --muted: #9aa3bd; --primary: #4f7cff; --green: #3ecf8e;
+      --amber: #ffb454; --red: #ff5d6c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--text); line-height: 1.6;
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    .btn {
+      display: inline-block; padding: 13px 26px; border-radius: 10px;
+      font-weight: 600; font-size: 15px; cursor: pointer; border: 1px solid transparent;
+      transition: transform .12s, background .15s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn.primary { background: var(--primary); color: #fff; }
+    .btn.ghost { border-color: var(--line); color: var(--text); }
+
+    /* nav */
+    nav {
+      position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px);
+      background: rgba(20,23,31,.8); border-bottom: 1px solid var(--line);
+    }
+    nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 62px; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; }
+    .logo .em { font-size: 24px; }
+    nav .links { display: flex; gap: 26px; font-size: 14px; color: var(--muted); }
+    nav .links a:hover { color: var(--text); }
+
+    /* hero */
+    .hero { padding: 80px 0 40px; text-align: center;
+      background: radial-gradient(1000px 400px at 50% -50px, rgba(79,124,255,.18), transparent); }
+    .badge-pill {
+      display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px;
+      background: rgba(79,124,255,.15); color: #9fb6ff; border: 1px solid rgba(79,124,255,.35);
+      margin-bottom: 22px;
+    }
+    .hero h1 { font-size: 48px; line-height: 1.2; letter-spacing: -1px; }
+    .hero h1 .grad {
+      background: linear-gradient(90deg, #4f7cff, #3ecf8e); -webkit-background-clip: text;
+      background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero p.lead { font-size: 19px; color: var(--muted); margin: 22px auto 32px; max-width: 640px; }
+    .hero .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .hero .sub { margin-top: 16px; font-size: 13px; color: var(--muted); }
+
+    .shot { margin: 56px auto 0; max-width: 980px; }
+    .shot img {
+      width: 100%; border-radius: 14px; border: 1px solid var(--line);
+      box-shadow: 0 30px 80px rgba(0,0,0,.5);
+    }
+
+    /* sections */
+    section { padding: 72px 0; }
+    .eyebrow { color: var(--primary); font-weight: 700; font-size: 14px; letter-spacing: .5px; }
+    h2.title { font-size: 34px; letter-spacing: -.5px; margin: 8px 0 14px; }
+    .section-lead { color: var(--muted); font-size: 16px; max-width: 620px; }
+    .center { text-align: center; }
+    .center .section-lead { margin: 0 auto; }
+
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 44px; }
+    .feat {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 26px;
+      transition: border-color .15s, transform .15s;
+    }
+    .feat:hover { border-color: var(--primary); transform: translateY(-3px); }
+    .feat .ic { font-size: 30px; }
+    .feat h3 { font-size: 18px; margin: 14px 0 8px; }
+    .feat p { color: var(--muted); font-size: 14px; }
+    .feat .tag { display: inline-block; margin-top: 12px; font-size: 11px; padding: 3px 9px; border-radius: 10px; }
+    .tag.now { background: rgba(62,207,142,.16); color: var(--green); }
+
+    /* steps */
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 44px; }
+    .step { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 24px; position: relative; }
+    .step .n {
+      width: 34px; height: 34px; border-radius: 50%; background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-weight: 800; margin-bottom: 14px;
+    }
+    .step h4 { font-size: 16px; margin-bottom: 6px; }
+    .step p { color: var(--muted); font-size: 13.5px; }
+
+    /* highlight */
+    .highlight {
+      background: linear-gradient(120deg, rgba(79,124,255,.1), rgba(62,207,142,.08));
+      border: 1px solid var(--line); border-radius: 20px; padding: 48px;
+      display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center;
+    }
+    .highlight h2 { font-size: 30px; margin-bottom: 14px; }
+    .highlight ul { list-style: none; margin-top: 18px; }
+    .highlight li { padding: 8px 0 8px 30px; position: relative; color: var(--muted); }
+    .highlight li::before { content: "✓"; position: absolute; left: 0; color: var(--green); font-weight: 800; }
+    .highlight .visual {
+      background: #11141d; border: 1px solid var(--line); border-radius: 14px; padding: 26px; text-align: center;
+    }
+    .meter { display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 120px; }
+    .meter span { width: 14px; background: var(--primary); border-radius: 3px 3px 0 0; }
+    .meter span.hot { background: var(--red); box-shadow: 0 0 14px var(--red); }
+    .meter-cap { margin-top: 14px; color: var(--red); font-weight: 700; }
+
+    /* roadmap */
+    .road { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 40px; }
+    .road .col h3 { font-size: 16px; margin-bottom: 14px; color: var(--muted); }
+    .road ul { list-style: none; }
+    .road li { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      padding: 13px 16px; margin-bottom: 10px; font-size: 14.5px; }
+    .road li b { color: var(--amber); }
+
+    /* cta */
+    .cta-box { text-align: center; background: var(--card); border: 1px solid var(--line);
+      border-radius: 20px; padding: 56px 24px; }
+    .cta-box h2 { font-size: 30px; }
+    .cta-box p { color: var(--muted); margin: 12px 0 28px; }
+
+    footer { border-top: 1px solid var(--line); padding: 34px 0; color: var(--muted); font-size: 13px; text-align: center; }
+
+    @media (max-width: 820px) {
+      .hero h1 { font-size: 34px; }
+      .features, .steps, .road { grid-template-columns: 1fr; }
+      .highlight { grid-template-columns: 1fr; padding: 32px; }
+      nav .links { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="wrap">
+      <div class="logo"><span class="em">🎛️</span> X32 교회 음향</div>
+      <div class="links">
+        <a href="#features">특징</a>
+        <a href="#how">사용법</a>
+        <a href="#auto">자동화</a>
+        <a href="#roadmap">로드맵</a>
+      </div>
+      <a href="#download" class="btn ghost" style="padding:9px 18px;font-size:14px;">다운로드</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="wrap">
+      <span class="badge-pill">Behringer X32 · M32 전용 · Windows / macOS</span>
+      <h1>음향 봉사를<br /><span class="grad">클릭 몇 번</span>으로 끝내세요</h1>
+      <p class="lead">
+        복잡한 콘솔 대신 "설교 / 찬양팀 / 기도" 버튼 하나로 전환하고,
+        하울링은 실시간으로 잡아냅니다. 음향이 처음인 봉사자도 바로 쓸 수 있는
+        교회 음향 자동화 데스크탑 앱.
+      </p>
+      <div class="cta">
+        <a href="#download" class="btn primary">무료로 시작하기</a>
+        <a href="#how" class="btn ghost">사용법 보기</a>
+      </div>
+      <p class="sub">설치 후 X32의 IP만 입력하면 바로 연결됩니다.</p>
+
+      <div class="shot">
+        <img src="assets/screenshot.png" alt="X32 교회 음향 앱 화면" />
+      </div>
+    </div>
+  </header>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="wrap center">
+      <span class="eyebrow">주요 기능</span>
+      <h2 class="title">현장에 필요한 것만, 쉽게</h2>
+      <p class="section-lead">매주 바뀌는 음향팀 누구나 5분이면 익히도록 만들었습니다.</p>
+    </div>
+    <div class="wrap">
+      <div class="features">
+        <div class="feat">
+          <div class="ic">🎬</div>
+          <h3>원터치 Scene</h3>
+          <p>설교·찬양팀·기도·광고·전체음소거를 버튼 하나로 일괄 적용. 채널 음소거와 볼륨이 한 번에 세팅됩니다.</p>
+          <span class="tag now">바로 사용</span>
+        </div>
+        <div class="feat">
+          <div class="ic">📋</div>
+          <h3>예배 순서 큐</h3>
+          <p>예배 순서를 미리 짜두고 스페이스바로 다음 장면을 차례차례 전환. 진행자도 흐름을 놓치지 않습니다.</p>
+          <span class="tag now">바로 사용</span>
+        </div>
+        <div class="feat">
+          <div class="ic">⚠️</div>
+          <h3>피드백 감지·경고</h3>
+          <p>RTA 분석으로 하울링(삐— 소리) 의심 주파수를 실시간 경고. 민감도도 조절할 수 있어요.</p>
+          <span class="tag now">바로 사용</span>
+        </div>
+        <div class="feat">
+          <div class="ic">🛡️</div>
+          <h3>자동 피드백 억제</h3>
+          <p>감지에서 끝나지 않습니다. 우는 주파수를 GEQ에서 자동으로 단계적 감쇠해 하울링을 눌러줍니다.</p>
+          <span class="tag now">바로 사용</span>
+        </div>
+        <div class="feat">
+          <div class="ic">💾</div>
+          <h3>사용자 정의 Scene</h3>
+          <p>지금 콘솔 상태를 "주일예배 1부"처럼 이름 붙여 저장하고, 다음 주에 그대로 불러오기.</p>
+          <span class="tag now">바로 사용</span>
+        </div>
+        <div class="feat">
+          <div class="ic">📊</div>
+          <h3>채널 상태 한눈에</h3>
+          <p>채널별 이름·볼륨(dB)·음소거·EQ 상태를 표로 확인. 4밴드 EQ 상세까지 한 화면에.</p>
+          <span class="tag now">바로 사용</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW -->
+  <section id="how" style="background: var(--bg2);">
+    <div class="wrap center">
+      <span class="eyebrow">사용법</span>
+      <h2 class="title">처음이어도 괜찮아요</h2>
+      <p class="section-lead">앱을 처음 켜면 단계별 가이드가 화면을 짚어주며 따라오게 안내합니다.</p>
+    </div>
+    <div class="wrap">
+      <div class="steps">
+        <div class="step"><div class="n">1</div><h4>연결</h4><p>X32의 IP 주소를 입력하고 [연결]. 콘솔 정보가 자동으로 표시됩니다.</p></div>
+        <div class="step"><div class="n">2</div><h4>상태 확인</h4><p>[상태 읽기]로 현재 채널 볼륨·음소거·EQ를 한눈에 불러옵니다.</p></div>
+        <div class="step"><div class="n">3</div><h4>장면 전환</h4><p>예배 순서대로 Scene 버튼을 누르거나, 큐로 묶어 스페이스바로 진행.</p></div>
+        <div class="step"><div class="n">4</div><h4>안심 모니터</h4><p>피드백 감지를 켜두면 하울링을 실시간 경고하고 자동으로 눌러줍니다.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AUTO HIGHLIGHT -->
+  <section id="auto">
+    <div class="wrap">
+      <div class="highlight">
+        <div>
+          <span class="eyebrow">차별점</span>
+          <h2>하울링, 감지에서 끝내지 않습니다</h2>
+          <p class="section-lead">"삐—" 소리가 예배를 방해하기 전에, 우는 주파수를 찾아 자동으로 눌러줍니다.</p>
+          <ul>
+            <li>RTA 스펙트럼에서 지속되는 좁은 피크를 실시간 감지</li>
+            <li>해당 주파수를 31밴드 GEQ의 가장 가까운 밴드로 매핑</li>
+            <li>단계적으로 감쇠하고, 안전 한도를 넘지 않도록 제한</li>
+            <li>끄면 깎았던 밴드를 0dB로 자동 복원</li>
+          </ul>
+        </div>
+        <div class="visual">
+          <div class="meter">
+            <span style="height:30%"></span><span style="height:45%"></span>
+            <span style="height:38%"></span><span class="hot" style="height:96%"></span>
+            <span style="height:42%"></span><span style="height:35%"></span>
+            <span style="height:50%"></span><span style="height:33%"></span>
+          </div>
+          <div class="meter-cap">⚠ 2.0kHz 피드백 감지 → 자동 −6dB</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROADMAP -->
+  <section id="roadmap" style="background: var(--bg2);">
+    <div class="wrap center">
+      <span class="eyebrow">로드맵</span>
+      <h2 class="title">계속 발전합니다</h2>
+      <p class="section-lead">현장 피드백을 받아 다음 기능을 준비하고 있어요.</p>
+    </div>
+    <div class="wrap">
+      <div class="road">
+        <div class="col">
+          <h3>✅ 지금 제공</h3>
+          <ul>
+            <li>원터치 Scene 템플릿 · 사용자 정의 Scene</li>
+            <li>예배 순서 큐 (스페이스바 진행)</li>
+            <li>피드백 감지 + 자동 억제</li>
+            <li>채널·EQ 상태 읽기 · 한국어 가이드 투어</li>
+          </ul>
+        </div>
+        <div class="col">
+          <h3>🚧 준비 중</h3>
+          <ul>
+            <li><b>인물별 마이크 프리셋</b> — 사람별 EQ/게인 저장·호출</li>
+            <li><b>실시간 양방향 동기화</b> — 콘솔 페이더·미터 라이브</li>
+            <li><b>되돌리기 · 전체 백업/복원</b></li>
+            <li><b>태블릿 원격 조작</b> · 봉사자 쉬운 모드</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="download">
+    <div class="wrap">
+      <div class="cta-box">
+        <h2>이번 주일, 음향이 한결 쉬워집니다</h2>
+        <p>Windows·macOS 지원 · 오픈소스(MIT) · X32 / M32 호환</p>
+        <div class="cta" style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
+          <a href="#" class="btn primary">설치 파일 받기</a>
+          <a href="https://github.com/koreayjk/x32audio" class="btn ghost">GitHub에서 보기</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      🎛️ X32 교회 음향 · Behringer X32/M32 음향 자동화 · MIT License<br />
+      Behringer, X32, M32은 각 소유자의 상표입니다. 본 앱은 비공식 도구입니다.
+    </div>
+  </footer>
+</body>
+</html>

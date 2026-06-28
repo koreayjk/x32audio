@@ -189,6 +189,64 @@ td.empty, .empty td { color: var(--muted); text-align: center; padding: 28px 12p
 .scene.danger { border-color: rgba(255,93,108,.5); }
 .scene.danger .name { color: var(--red); }
 
+.main-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* ---- 자동 억제 ---- */
+.fb-suppress {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 0 16px 12px; border-bottom: 1px solid var(--line);
+}
+.switch { cursor: pointer; user-select: none; }
+.switch input { accent-color: var(--green); width: 15px; height: 15px; }
+.mini { width: 48px; background: var(--bg2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+#suppressInfo.active { color: var(--amber); }
+
+/* ---- 사용자 정의 Scene ---- */
+.custom-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px 6px; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 12px; font-weight: 600;
+}
+.empty-cust { padding: 4px 16px 12px; font-size: 12.5px; }
+.scene .row-actions { display: flex; gap: 6px; }
+
+/* ---- 예배 순서 큐 ---- */
+.cue-transport {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; background: var(--bg2); border-bottom: 1px solid var(--line);
+}
+#cuePos { margin-left: auto; font-variant-numeric: tabular-nums; }
+.cue-list { list-style: none; margin: 0; padding: 10px 16px; counter-reset: cue;
+  max-height: 280px; overflow-y: auto; }
+.cue-list li.cue-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; margin-bottom: 6px;
+  background: var(--bg2); border: 1px solid var(--line); border-radius: 8px;
+}
+.cue-list li.cue-item::before {
+  counter-increment: cue; content: counter(cue);
+  width: 22px; height: 22px; flex: none; border-radius: 50%;
+  background: var(--card2); color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.cue-list li.cue-item.current {
+  border-color: var(--green); background: rgba(62,207,142,.1);
+}
+.cue-list li.cue-item.current::before { background: var(--green); color: #0c2a1c; }
+.cue-list li.empty { padding: 18px 8px; text-align: center; }
+.cue-item .ico { font-size: 18px; }
+.cue-item .cname { flex: 1; font-size: 13.5px; }
+.cue-item .ctag { font-size: 11px; color: var(--muted); }
+.cue-item .cbtns { display: flex; gap: 4px; }
+.iconbtn {
+  background: var(--card2); border: 1px solid var(--line); color: var(--text);
+  width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 12px;
+}
+.iconbtn:hover { background: #39426a; }
+.iconbtn:disabled { opacity: .35; cursor: not-allowed; }
+
 /* ---- 모달 ---- */
 .modal {
   position: fixed; inset: 0; background: rgba(8,10,16,.6);

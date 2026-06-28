@@ -38,35 +38,59 @@
   <div id="info" class="info-strip hidden"></div>
 
   <main class="grid">
-    <!-- 채널 상태 -->
-    <section class="card channels">
-      <div class="card-head">
-        <h2>채널 상태</h2>
-        <div class="head-actions">
-          <label class="inline">
-            채널 수
-            <select id="chCount">
-              <option value="8">8</option>
-              <option value="16" selected>16</option>
-              <option value="32">32</option>
-            </select>
-          </label>
-          <button id="refreshBtn" class="btn" disabled>상태 읽기</button>
+    <!-- 좌측 컬럼 -->
+    <div class="main-col">
+      <!-- 채널 상태 -->
+      <section class="card channels">
+        <div class="card-head">
+          <h2>채널 상태</h2>
+          <div class="head-actions">
+            <label class="inline">
+              채널 수
+              <select id="chCount">
+                <option value="8">8</option>
+                <option value="16" selected>16</option>
+                <option value="32">32</option>
+              </select>
+            </label>
+            <button id="refreshBtn" class="btn" disabled>상태 읽기</button>
+          </div>
         </div>
-      </div>
-      <div class="table-wrap">
-        <table id="chTable">
-          <thead>
-            <tr>
-              <th>CH</th><th>이름</th><th>레벨</th><th>상태</th><th>EQ</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="chBody">
-            <tr class="empty"><td colspan="6">연결 후 <b>상태 읽기</b>를 눌러 채널을 불러오세요.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+        <div class="table-wrap">
+          <table id="chTable">
+            <thead>
+              <tr>
+                <th>CH</th><th>이름</th><th>레벨</th><th>상태</th><th>EQ</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="chBody">
+              <tr class="empty"><td colspan="6">연결 후 <b>상태 읽기</b>를 눌러 채널을 불러오세요.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 예배 순서 큐 -->
+      <section class="card cue">
+        <div class="card-head">
+          <h2>예배 순서 큐</h2>
+          <div class="head-actions">
+            <select id="cueAdd" title="큐에 장면 추가">
+              <option value="">＋ 장면 추가…</option>
+            </select>
+          </div>
+        </div>
+        <div class="cue-transport">
+          <button id="cuePrev" class="btn small" disabled>◀ 이전</button>
+          <button id="cueNext" class="btn primary" disabled>▶ 다음 (Space)</button>
+          <button id="cueReset" class="btn small ghost" disabled>처음으로</button>
+          <span id="cuePos" class="muted">– / –</span>
+        </div>
+        <ol id="cueList" class="cue-list">
+          <li class="empty muted">큐가 비어 있습니다. 위 <b>＋ 장면 추가</b>로 예배 순서를 만들어 보세요.</li>
+        </ol>
+      </section>
+    </div>
 
     <!-- 우측 컬럼 -->
     <div class="side">
@@ -83,6 +107,16 @@
           </label>
           <span id="fbState" class="muted">중지됨</span>
         </div>
+        <div class="fb-suppress">
+          <label class="inline switch" title="피드백 감지 시 해당 주파수를 GEQ에서 자동으로 감쇠">
+            <input type="checkbox" id="autoSuppress" disabled />
+            🛡️ 자동 억제
+          </label>
+          <label class="inline">FX 슬롯
+            <input id="fxSlot" class="mini" type="number" min="1" max="8" value="1" />
+          </label>
+          <span id="suppressInfo" class="muted"></span>
+        </div>
         <div id="spectrum" class="spectrum" aria-hidden="true"></div>
         <ul id="alertList" class="alerts">
           <li class="muted empty">감지된 피드백이 없습니다.</li>
@@ -95,6 +129,13 @@
           <h2>Scene 템플릿</h2>
         </div>
         <div id="sceneList" class="scene-list"></div>
+        <div class="custom-head">
+          <span>사용자 정의 Scene</span>
+          <button id="saveStateBtn" class="btn small" disabled title="현재 콘솔의 채널 상태를 저장">💾 현재 상태 저장</button>
+        </div>
+        <div id="customList" class="scene-list">
+          <div class="muted empty-cust">저장된 사용자 정의 Scene이 없습니다.</div>
+        </div>
       </section>
     </div>
   </main>

@@ -42,6 +42,7 @@ x32.on('feedback', (alert) => send('x32:feedback', alert));
 x32.on('feedback-clear', (info) => send('x32:feedback-clear', info));
 x32.on('meters', (spectrum) => send('x32:meters', spectrum));
 x32.on('scene-applied', (r) => send('x32:scene-applied', r));
+x32.on('suppress-info', (info) => send('x32:suppress-info', info));
 
 // ---- IPC 핸들러 ----
 ipcMain.handle('x32:connect', async (_e, { host, port }) => {
@@ -76,6 +77,18 @@ ipcMain.handle('x32:start-feedback', async (_e, options) => {
 ipcMain.handle('x32:stop-feedback', async () => {
   x32.stopFeedback();
   return true;
+});
+
+ipcMain.handle('x32:capture-state', async (_e, { count }) => {
+  return x32.captureState(count || 16);
+});
+
+ipcMain.handle('x32:apply-states', async (_e, { states }) => {
+  return x32.applyChannelStates(states);
+});
+
+ipcMain.handle('x32:auto-suppress', async (_e, { enabled, options }) => {
+  return x32.setAutoSuppress(enabled, options);
 });
 
 ipcMain.handle('x32:status', async () => ({

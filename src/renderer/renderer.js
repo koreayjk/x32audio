@@ -50,6 +50,9 @@ function setConnected(info) {
   connectBtn.textContent = '연결 해제';
   refreshBtn.disabled = false;
   feedbackBtn.disabled = false;
+  if (autoSuppress) autoSuppress.disabled = false;
+  if (saveStateBtn) saveStateBtn.disabled = false;
+  updateCueButtons();
   if (info) {
     infoStrip.classList.remove('hidden');
     infoStrip.innerHTML =
@@ -70,6 +73,10 @@ function setDisconnected() {
   fbState.textContent = '중지됨';
   fbState.classList.remove('alarm');
   infoStrip.classList.add('hidden');
+  if (autoSuppress) { autoSuppress.checked = false; autoSuppress.disabled = true; }
+  if (saveStateBtn) saveStateBtn.disabled = true;
+  if (suppressInfo) { suppressInfo.textContent = ''; suppressInfo.classList.remove('active'); }
+  updateCueButtons();
 }
 
 function esc(str) {
@@ -260,6 +267,7 @@ function clearAlert(info) {
 // ---- Scene 템플릿 ----
 async function loadScenes() {
   const scenes = await api.getScenes();
+  templateScenes = scenes;
   sceneList.innerHTML = '';
   for (const sc of scenes) {
     const div = document.createElement('div');
@@ -271,6 +279,7 @@ async function loadScenes() {
     div.addEventListener('click', () => applyScene(sc));
     sceneList.appendChild(div);
   }
+  rebuildCueAddOptions();
 }
 
 async function applyScene(sc) {
@@ -293,6 +302,271 @@ api.on('error', (msg) => showToast('오류: ' + msg, 'err'));
 api.on('meters', (spectrum) => renderSpectrum(spectrum));
 api.on('feedback', (alert) => addAlert(alert));
 api.on('feedback-clear', (info) => clearAlert(info));
+
+// ==== 자동 억제 · 사용자 정의 Scene · 예배 순서 큐 ====
+const autoSuppress = $('autoSuppress');
+const fxSlot = $('fxSlot');
+const suppressInfo = $('suppressInfo');
+const saveStateBtn = $('saveStateBtn');
+const customList = $('customList');
+const cueAdd = $('cueAdd');
+const cueListEl = $('cueList');
+const cuePrev = $('cuePrev');
+const cueNext = $('cueNext');
+const cueReset = $('cueReset');
+const cuePos = $('cuePos');
+
+const CUSTOM_KEY = 'x32_custom_scenes';
+const CUE_KEY = 'x32_cue_list';
+
+let templateScenes = [];
+let customScenes = loadJson(CUSTOM_KEY, []); // [{id,name,states:[{ch,on,fader}]}]
+let cue = loadJson(CUE_KEY, []);             // [{kind:'template'|'custom', id, name, icon}]
+let cueIndex = -1;
+
+function loadJson(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch (_) { return fallback; }
+}
+function saveJson(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (_) { /* ignore */ } }
+function uid() { return Math.random().toString(36).slice(2, 9); }
+
+// ---- 자동 피드백 억제 ----
+autoSuppress.addEventListener('change', async () => {
+  const slot = parseInt(fxSlot.value, 10) || 1;
+  try {
+    await api.setAutoSuppress(autoSuppress.checked, { slot });
+    if (autoSuppress.checked) {
+      showToast('🛡️ 자동 억제 켜짐 — 피드백 시 해당 주파수를 자동 감쇠합니다.', 'ok');
+    } else {
+      showToast('자동 억제 꺼짐 — 감쇠했던 밴드를 0dB로 복원했습니다.');
+      suppressInfo.textContent = '';
+      suppressInfo.classList.remove('active');
+    }
+  } catch (err) { showToast(errMsg(err), 'err'); }
+});
+fxSlot.addEventListener('change', () => {
+  if (autoSuppress.checked) api.setAutoSuppress(true, { slot: parseInt(fxSlot.value, 10) || 1 });
+});
+api.on('suppress-info', (info) => {
+  const hz = info.bandFreq >= 1000 ? `${info.bandFreq / 1000}k` : info.bandFreq;
+  suppressInfo.textContent = `🛡️ ${hz}Hz ${info.cutDb}dB 감쇠`;
+  suppressInfo.classList.add('active');
+});
+
+// ---- 사용자 정의 Scene ----
+saveStateBtn.addEventListener('click', async () => {
+  if (!connected) return;
+  const name = (prompt('저장할 Scene 이름을 입력하세요', '주일예배 1부') || '').trim();
+  if (!name) return;
+  saveStateBtn.disabled = true;
+  saveStateBtn.textContent = '저장 중…';
+  try {
+    const count = parseInt(chCount.value, 10);
+    const states = await api.captureState(count);
+    customScenes.push({ id: uid(), name, states });
+    saveJson(CUSTOM_KEY, customScenes);
+    renderCustom();
+    rebuildCueAddOptions();
+    showToast(`'${name}' 저장 완료 (${states.length}개 채널)`, 'ok');
+  } catch (err) {
+    showToast('저장 실패: ' + errMsg(err), 'err');
+  } finally {
+    saveStateBtn.disabled = !connected;
+    saveStateBtn.textContent = '💾 현재 상태 저장';
+  }
+});
+
+function renderCustom() {
+  if (!customScenes.length) {
+    customList.innerHTML = '<div class="muted empty-cust">저장된 사용자 정의 Scene이 없습니다.</div>';
+    return;
+  }
+  customList.innerHTML = '';
+  for (const cs of customScenes) {
+    const div = document.createElement('div');
+    div.className = 'scene';
+    div.innerHTML =
+      `<span class="ico">💾</span><div class="meta"><div class="name">${esc(cs.name)}</div>` +
+      `<div class="desc">${cs.states.length}개 채널 상태</div></div>`;
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+    const applyB = document.createElement('button');
+    applyB.className = 'btn small';
+    applyB.textContent = '적용';
+    applyB.addEventListener('click', (e) => { e.stopPropagation(); applyCustom(cs); });
+    const delB = document.createElement('button');
+    delB.className = 'btn small ghost';
+    delB.textContent = '삭제';
+    delB.addEventListener('click', (e) => { e.stopPropagation(); deleteCustom(cs); });
+    actions.append(applyB, delB);
+    div.appendChild(actions);
+    customList.appendChild(div);
+  }
+}
+
+async function applyCustom(cs) {
+  if (!connected) return showToast('먼저 X32에 연결하세요.', 'err');
+  try {
+    const n = await api.applyStates(cs.states);
+    showToast(`'${cs.name}' 적용 (${n}개 명령)`, 'ok');
+    setTimeout(loadChannels, 250);
+  } catch (err) { showToast('적용 실패: ' + errMsg(err), 'err'); }
+}
+
+function deleteCustom(cs) {
+  if (!confirm(`'${cs.name}' 을(를) 삭제할까요?`)) return;
+  customScenes = customScenes.filter((x) => x.id !== cs.id);
+  saveJson(CUSTOM_KEY, customScenes);
+  cue = cue.filter((c) => !(c.kind === 'custom' && c.id === cs.id));
+  saveJson(CUE_KEY, cue);
+  if (cueIndex >= cue.length) cueIndex = cue.length - 1;
+  renderCustom();
+  renderCue();
+  rebuildCueAddOptions();
+}
+
+// ---- 예배 순서 큐 ----
+function rebuildCueAddOptions() {
+  cueAdd.innerHTML = '<option value="">＋ 장면 추가…</option>';
+  const og1 = document.createElement('optgroup');
+  og1.label = '기본 템플릿';
+  for (const s of templateScenes) {
+    const o = document.createElement('option');
+    o.value = 't:' + s.id;
+    o.textContent = `${s.icon || ''} ${s.name}`;
+    og1.appendChild(o);
+  }
+  cueAdd.appendChild(og1);
+  if (customScenes.length) {
+    const og2 = document.createElement('optgroup');
+    og2.label = '사용자 정의';
+    for (const c of customScenes) {
+      const o = document.createElement('option');
+      o.value = 'c:' + c.id;
+      o.textContent = '💾 ' + c.name;
+      og2.appendChild(o);
+    }
+    cueAdd.appendChild(og2);
+  }
+}
+
+cueAdd.addEventListener('change', () => {
+  const v = cueAdd.value;
+  cueAdd.value = '';
+  if (!v) return;
+  const kind = v[0];
+  const id = v.slice(2);
+  if (kind === 't') {
+    const s = templateScenes.find((x) => x.id === id);
+    if (s) cue.push({ kind: 'template', id: s.id, name: s.name, icon: s.icon || '🎬' });
+  } else {
+    const c = customScenes.find((x) => x.id === id);
+    if (c) cue.push({ kind: 'custom', id: c.id, name: c.name, icon: '💾' });
+  }
+  saveJson(CUE_KEY, cue);
+  renderCue();
+});
+
+function renderCue() {
+  if (!cue.length) {
+    cueListEl.innerHTML =
+      '<li class="empty muted">큐가 비어 있습니다. 위 <b>＋ 장면 추가</b>로 예배 순서를 만들어 보세요.</li>';
+    updateCueButtons();
+    return;
+  }
+  cueListEl.innerHTML = '';
+  cue.forEach((c, idx) => {
+    const li = document.createElement('li');
+    li.className = 'cue-item' + (idx === cueIndex ? ' current' : '');
+    li.innerHTML =
+      `<span class="ico">${c.icon || '🎬'}</span>` +
+      `<span class="cname">${esc(c.name)} <span class="ctag">${c.kind === 'custom' ? '사용자' : '템플릿'}</span></span>`;
+    const btns = document.createElement('span');
+    btns.className = 'cbtns';
+    btns.append(
+      mkIcon('▲', idx === 0, () => moveCue(idx, -1)),
+      mkIcon('▼', idx === cue.length - 1, () => moveCue(idx, 1)),
+      mkIcon('▶', false, () => gotoCue(idx), '이 장면 적용'),
+      mkIcon('✕', false, () => removeCue(idx), '큐에서 제거'),
+    );
+    li.appendChild(btns);
+    cueListEl.appendChild(li);
+  });
+  updateCueButtons();
+}
+
+function mkIcon(text, disabled, fn, title) {
+  const b = document.createElement('button');
+  b.className = 'iconbtn';
+  b.textContent = text;
+  b.disabled = disabled;
+  if (title) b.title = title;
+  b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+  return b;
+}
+
+function moveCue(idx, dir) {
+  const j = idx + dir;
+  if (j < 0 || j >= cue.length) return;
+  [cue[idx], cue[j]] = [cue[j], cue[idx]];
+  if (cueIndex === idx) cueIndex = j;
+  else if (cueIndex === j) cueIndex = idx;
+  saveJson(CUE_KEY, cue);
+  renderCue();
+}
+
+function removeCue(idx) {
+  cue.splice(idx, 1);
+  if (cueIndex >= cue.length) cueIndex = cue.length - 1;
+  else if (cueIndex > idx) cueIndex -= 1;
+  saveJson(CUE_KEY, cue);
+  renderCue();
+}
+
+async function applyCueItem(c) {
+  if (c.kind === 'template') return api.applyScene(c.id);
+  const cs = customScenes.find((x) => x.id === c.id);
+  if (!cs) throw new Error('삭제된 사용자 Scene입니다.');
+  return api.applyStates(cs.states);
+}
+
+async function gotoCue(idx) {
+  if (!connected) return showToast('먼저 X32에 연결하세요.', 'err');
+  if (idx < 0 || idx >= cue.length) return;
+  cueIndex = idx;
+  renderCue();
+  try {
+    await applyCueItem(cue[idx]);
+    showToast(`▶ ${idx + 1}. ${cue[idx].name} 적용`, 'ok');
+    setTimeout(loadChannels, 250);
+  } catch (err) { showToast('적용 실패: ' + errMsg(err), 'err'); }
+}
+
+function nextCue() { if (cueIndex < cue.length - 1) gotoCue(cueIndex + 1); }
+function prevCue() { if (cueIndex > 0) gotoCue(cueIndex - 1); }
+cueNext.addEventListener('click', nextCue);
+cuePrev.addEventListener('click', prevCue);
+cueReset.addEventListener('click', () => { cueIndex = -1; renderCue(); });
+
+function updateCueButtons() {
+  const has = cue.length > 0;
+  if (cuePos) cuePos.textContent = has ? `${cueIndex >= 0 ? cueIndex + 1 : '–'} / ${cue.length}` : '– / –';
+  if (cueNext) cueNext.disabled = !connected || !has || cueIndex >= cue.length - 1;
+  if (cuePrev) cuePrev.disabled = !connected || cueIndex <= 0;
+  if (cueReset) cueReset.disabled = !has || cueIndex < 0;
+}
+
+// 스페이스바 = 다음 큐 적용
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space') return;
+  if (!tour.classList.contains('hidden')) return;
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (['input', 'select', 'textarea', 'button'].includes(tag)) return;
+  if (!connected || !cue.length) return;
+  e.preventDefault();
+  nextCue();
+});
 
 // ---- 사용 가이드 투어 ----
 const guideBtn = $('guideBtn');
@@ -417,6 +691,8 @@ document.addEventListener('keydown', (e) => {
 // ---- 초기화 ----
 (async function init() {
   await loadScenes();
+  renderCustom();
+  renderCue();
   const status = await api.getStatus();
   if (status.connected) setConnected(status.info);
   else setDisconnected();
