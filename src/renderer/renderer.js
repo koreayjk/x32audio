@@ -52,7 +52,10 @@ function setConnected(info) {
   feedbackBtn.disabled = false;
   if (autoSuppress) autoSuppress.disabled = false;
   if (saveStateBtn) saveStateBtn.disabled = false;
+  if (liveSync) liveSync.disabled = false;
   updateCueButtons();
+  updateUndo();
+  applyI18n();
   if (info) {
     infoStrip.classList.remove('hidden');
     infoStrip.innerHTML =
@@ -76,7 +79,10 @@ function setDisconnected() {
   if (autoSuppress) { autoSuppress.checked = false; autoSuppress.disabled = true; }
   if (saveStateBtn) saveStateBtn.disabled = true;
   if (suppressInfo) { suppressInfo.textContent = ''; suppressInfo.classList.remove('active'); }
+  if (liveSync) { liveSync.checked = false; liveSync.disabled = true; }
   updateCueButtons();
+  updateUndo();
+  applyI18n();
 }
 
 function esc(str) {
@@ -141,16 +147,18 @@ function renderChannels(channels) {
     return;
   }
   chBody.innerHTML = '';
+  chRows.clear();
   for (const c of channels) {
-    const tr = document.createElement('tr');
-    tr.innerHTML =
+    const row = document.createElement('tr');
+    row.innerHTML =
       `<td>${String(c.ch).padStart(2, '0')}</td>` +
       `<td>${esc(c.name)}</td>` +
       `<td class="lvl">${esc(c.dbText)} dB</td>` +
       `<td><span class="pill ${c.on ? 'on' : 'off'}">${c.on ? 'ON' : 'MUTE'}</span></td>` +
       `<td><span class="pill ${c.eqOn ? 'eq-on' : 'eq-off'}">${c.eqOn ? 'EQ' : 'OFF'}</span></td>` +
       `<td><button class="btn small ghost" data-ch="${c.ch}">EQ 보기</button></td>`;
-    chBody.appendChild(tr);
+    chBody.appendChild(row);
+    chRows.set(c.ch, { tr: row, data: c });
   }
   chBody.querySelectorAll('button[data-ch]').forEach((b) =>
     b.addEventListener('click', () => openEq(parseInt(b.dataset.ch, 10))));
@@ -158,8 +166,10 @@ function renderChannels(channels) {
 
 // ---- EQ 상세 ----
 async function openEq(ch) {
+  currentEqCh = ch;
   eqTitle.textContent = `채널 ${String(ch).padStart(2, '0')} · EQ 상세`;
   eqBody.innerHTML = '<p class="muted">EQ 상태를 읽는 중…</p>';
+  renderPresets();
   eqModal.classList.remove('hidden');
   try {
     const eq = await api.readEq(ch);
@@ -184,7 +194,7 @@ feedbackBtn.addEventListener('click', async () => {
     await api.stopFeedback();
     feedbackOn = false;
     feedbackBtn.classList.remove('active');
-    feedbackBtn.textContent = '감지 시작';
+    feedbackBtn.textContent = tr('startDetect');
     fbState.textContent = '중지됨';
     fbState.classList.remove('alarm');
     clearSpectrum();
@@ -192,7 +202,7 @@ feedbackBtn.addEventListener('click', async () => {
     await api.startFeedback(sensitivityOptions());
     feedbackOn = true;
     feedbackBtn.classList.add('active');
-    feedbackBtn.textContent = '감지 중지';
+    feedbackBtn.textContent = tr('stopDetect');
     fbState.textContent = '감지 중…';
   }
 });
@@ -287,6 +297,7 @@ async function applyScene(sc) {
   const ok = confirm(`'${sc.name}' Scene 을 적용할까요?\n\n${sc.description}`);
   if (!ok) return;
   try {
+    await snapshotForUndo();
     const count = await api.applyScene(sc.id);
     showToast(`'${sc.name}' 적용 완료 (${count}개 명령 전송)`, 'ok');
     setTimeout(loadChannels, 250); // 변경 반영 후 새로고침
@@ -408,6 +419,7 @@ function renderCustom() {
 async function applyCustom(cs) {
   if (!connected) return showToast('먼저 X32에 연결하세요.', 'err');
   try {
+    await snapshotForUndo();
     const n = await api.applyStates(cs.states);
     showToast(`'${cs.name}' 적용 (${n}개 명령)`, 'ok');
     setTimeout(loadChannels, 250);
@@ -537,6 +549,7 @@ async function gotoCue(idx) {
   cueIndex = idx;
   renderCue();
   try {
+    await snapshotForUndo();
     await applyCueItem(cue[idx]);
     showToast(`▶ ${idx + 1}. ${cue[idx].name} 적용`, 'ok');
     setTimeout(loadChannels, 250);
@@ -567,6 +580,253 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault();
   nextCue();
 });
+
+// ==== 다국어 · 되돌리기 · 백업/복원 · 프리셋 · 실시간 · 쉬운모드 · 원격 ====
+const undoBtn = $('undoBtn');
+const backupBtn = $('backupBtn');
+const restoreBtn = $('restoreBtn');
+const restoreFile = $('restoreFile');
+const remoteBtn = $('remoteBtn');
+const simpleMode = $('simpleMode');
+const langSel = $('langSel');
+const liveSync = $('liveSync');
+const savePresetBtn = $('savePresetBtn');
+const presetList = $('presetList');
+const remoteModal = $('remoteModal');
+const remoteBody = $('remoteBody');
+const remoteClose = $('remoteClose');
+
+const PRESET_KEY = 'x32_mic_presets';
+let presets = loadJson(PRESET_KEY, []); // [{id,name,preset}]
+let undoStack = [];
+let currentEqCh = null;
+const chRows = new Map(); // ch -> { tr, data }
+
+// ---- 다국어(i18n) ----
+const I18N = {
+  ko: {
+    undo: '되돌리기', backup: '백업', restore: '복원', remote: '원격 조작', simple: '쉬운 모드',
+    channels: '채널 상태', live: '실시간', chCount: '채널 수', cue: '예배 순서 큐', feedback: '피드백 감지',
+    scenes: 'Scene 템플릿', custom: '사용자 정의 Scene', close: '닫기', micPreset: '인물별 마이크 프리셋',
+    savePreset: '이 채널 저장', remoteTitle: '태블릿/폰 원격 조작', ipAddr: 'X32 IP 주소', port: '포트',
+    guide: '사용 가이드', sensitivity: '민감도', autoSuppress: '자동 억제',
+    connect: '연결', disconnect: '연결 해제', readState: '상태 읽기',
+    startDetect: '감지 시작', stopDetect: '감지 중지', cuePrev: '◀ 이전', cueNext: '▶ 다음 (Space)',
+    cueReset: '처음으로', saveState: '💾 현재 상태 저장', connected: '연결됨', notConnected: '연결 안 됨',
+  },
+  en: {
+    undo: 'Undo', backup: 'Backup', restore: 'Restore', remote: 'Remote', simple: 'Simple mode',
+    channels: 'Channels', live: 'Live', chCount: 'Count', cue: 'Service Cue', feedback: 'Feedback',
+    scenes: 'Scene Templates', custom: 'Custom Scenes', close: 'Close', micPreset: 'Mic Presets (per person)',
+    savePreset: 'Save channel', remoteTitle: 'Tablet/Phone Remote', ipAddr: 'X32 IP', port: 'Port',
+    guide: 'Guide', sensitivity: 'Sensitivity', autoSuppress: 'Auto-suppress',
+    connect: 'Connect', disconnect: 'Disconnect', readState: 'Read state',
+    startDetect: 'Start', stopDetect: 'Stop', cuePrev: '◀ Prev', cueNext: '▶ Next (Space)',
+    cueReset: 'Reset', saveState: '💾 Save current', connected: 'Connected', notConnected: 'Not connected',
+  },
+};
+let lang = (() => { try { return localStorage.getItem('x32_lang') || 'ko'; } catch (_) { return 'ko'; } })();
+function tr(key) { return (I18N[lang] && I18N[lang][key]) || I18N.ko[key] || key; }
+
+function applyI18n() {
+  lang = langSel.value || 'ko';
+  try { localStorage.setItem('x32_lang', lang); } catch (_) { /* ignore */ }
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = tr(el.dataset.i18n); });
+  connectBtn.textContent = connected ? tr('disconnect') : tr('connect');
+  refreshBtn.textContent = tr('readState');
+  feedbackBtn.textContent = feedbackOn ? tr('stopDetect') : tr('startDetect');
+  cuePrev.textContent = tr('cuePrev');
+  cueNext.textContent = tr('cueNext');
+  cueReset.textContent = tr('cueReset');
+  saveStateBtn.textContent = tr('saveState');
+  statusText.textContent = connected ? tr('connected') : tr('notConnected');
+}
+langSel.addEventListener('change', applyI18n);
+
+// ---- 되돌리기(Undo) ----
+async function snapshotForUndo() {
+  if (!connected) return;
+  try {
+    const count = parseInt(chCount.value, 10);
+    const states = await api.captureState(count);
+    undoStack.push(states);
+    if (undoStack.length > 20) undoStack.shift();
+  } catch (_) { /* ignore */ }
+  updateUndo();
+}
+function updateUndo() { undoBtn.disabled = !connected || undoStack.length === 0; }
+undoBtn.addEventListener('click', async () => {
+  const snap = undoStack.pop();
+  if (!snap) return;
+  try {
+    await api.applyStates(snap);
+    showToast('↩ 직전 상태로 되돌렸습니다.', 'ok');
+    setTimeout(loadChannels, 250);
+  } catch (err) { showToast(errMsg(err), 'err'); }
+  updateUndo();
+});
+
+// ---- 백업 / 복원 ----
+backupBtn.addEventListener('click', async () => {
+  const data = {
+    app: 'x32-church-audio', version: 1,
+    customScenes, cue, presets,
+  };
+  if (connected) {
+    try { data.console = await api.captureState(32); } catch (_) { /* ignore */ }
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'x32-church-backup.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('백업 파일을 저장했습니다.', 'ok');
+});
+restoreBtn.addEventListener('click', () => restoreFile.click());
+restoreFile.addEventListener('change', async () => {
+  const file = restoreFile.files[0];
+  restoreFile.value = '';
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (data.app !== 'x32-church-audio') throw new Error('형식이 올바르지 않습니다.');
+    if (!confirm('백업으로 사용자 정의 Scene·큐·프리셋을 덮어씁니다. 계속할까요?')) return;
+    customScenes = data.customScenes || [];
+    cue = data.cue || [];
+    presets = data.presets || [];
+    saveJson(CUSTOM_KEY, customScenes);
+    saveJson(CUE_KEY, cue);
+    saveJson(PRESET_KEY, presets);
+    cueIndex = -1;
+    renderCustom(); renderCue(); rebuildCueAddOptions();
+    showToast('복원 완료.', 'ok');
+    if (connected && Array.isArray(data.console) &&
+        confirm('백업에 콘솔 채널 상태가 있습니다. 지금 콘솔에 적용할까요?')) {
+      await snapshotForUndo();
+      await api.applyStates(data.console);
+      setTimeout(loadChannels, 250);
+    }
+  } catch (err) { showToast('복원 실패: ' + errMsg(err), 'err'); }
+});
+
+// ---- 인물별 마이크 프리셋 (EQ 모달 내) ----
+function renderPresets() {
+  if (!presets.length) {
+    presetList.innerHTML =
+      '<div class="muted" style="font-size:12.5px">저장된 프리셋이 없습니다. [이 채널 저장]으로 현재 채널의 EQ·로우컷을 사람 이름으로 저장하세요.</div>';
+    return;
+  }
+  presetList.innerHTML = '';
+  for (const p of presets) {
+    const div = document.createElement('div');
+    div.className = 'preset-item';
+    div.innerHTML = `<span class="pname">🎙️ ${esc(p.name)}</span><span class="pmeta">EQ·로우컷</span>`;
+    const ap = document.createElement('button');
+    ap.className = 'btn small';
+    ap.textContent = '적용';
+    ap.addEventListener('click', () => applyPreset(p));
+    const del = document.createElement('button');
+    del.className = 'btn small ghost';
+    del.textContent = '삭제';
+    del.addEventListener('click', () => {
+      presets = presets.filter((x) => x.id !== p.id);
+      saveJson(PRESET_KEY, presets);
+      renderPresets();
+    });
+    div.append(ap, del);
+    presetList.appendChild(div);
+  }
+}
+async function applyPreset(p) {
+  if (!connected) return showToast('먼저 X32에 연결하세요.', 'err');
+  if (!currentEqCh) return;
+  try {
+    const n = await api.applyPreset(currentEqCh, p.preset);
+    showToast(`'${p.name}' → 채널 ${String(currentEqCh).padStart(2, '0')} 적용 (${n}개)`, 'ok');
+  } catch (err) { showToast('적용 실패: ' + errMsg(err), 'err'); }
+}
+savePresetBtn.addEventListener('click', async () => {
+  if (!connected || !currentEqCh) return showToast('연결 후 채널을 선택하세요.', 'err');
+  const name = (prompt('프리셋 이름(사람)을 입력하세요', '목사님') || '').trim();
+  if (!name) return;
+  try {
+    const preset = await api.capturePreset(currentEqCh);
+    presets.push({ id: uid(), name, preset });
+    saveJson(PRESET_KEY, presets);
+    renderPresets();
+    showToast(`'${name}' 프리셋 저장`, 'ok');
+  } catch (err) { showToast('저장 실패: ' + errMsg(err), 'err'); }
+});
+
+// ---- 실시간 동기화 ----
+liveSync.addEventListener('change', () => {
+  showToast(liveSync.checked ? '🔄 실시간 동기화 켜짐' : '실시간 동기화 꺼짐');
+});
+api.on('param', (msg) => {
+  if (!liveSync.checked || !msg) return;
+  updateRowFromParam(msg.address, msg.args);
+});
+function updateRowFromParam(address, args) {
+  const m = /^\/ch\/(\d\d)\/mix\/(fader|on)$/.exec(address);
+  if (!m) return;
+  const ch = parseInt(m[1], 10);
+  const entry = chRows.get(ch);
+  if (!entry) return;
+  if (m[2] === 'on') {
+    const on = args[0] === 1 || args[0] === true;
+    const pill = entry.tr.querySelector('.pill');
+    if (pill) { pill.className = `pill ${on ? 'on' : 'off'}`; pill.textContent = on ? 'ON' : 'MUTE'; }
+  } else if (m[2] === 'fader' && typeof args[0] === 'number') {
+    const cell = entry.tr.querySelector('.lvl');
+    if (cell) cell.textContent = faderToText(args[0]) + ' dB';
+  }
+}
+// 페이더 float → dB 텍스트 (메인 변환식의 렌더러 측 복제)
+function faderToText(f) {
+  let db;
+  if (f <= 0) return '-∞';
+  if (f >= 0.5) db = f * 40 - 30;
+  else if (f >= 0.25) db = f * 80 - 50;
+  else if (f >= 0.0625) db = f * 160 - 70;
+  else db = f * 480 - 90;
+  if (db <= -90) return '-∞';
+  return (db > 0 ? '+' : '') + db.toFixed(1);
+}
+
+// ---- 쉬운 모드 ----
+simpleMode.addEventListener('change', () => {
+  document.body.classList.toggle('simple', simpleMode.checked);
+  try { localStorage.setItem('x32_simple', simpleMode.checked ? '1' : '0'); } catch (_) { /* ignore */ }
+});
+
+// ---- 원격 조작 ----
+remoteBtn.addEventListener('click', openRemote);
+remoteClose.addEventListener('click', () => remoteModal.classList.add('hidden'));
+remoteModal.addEventListener('click', (e) => { if (e.target === remoteModal) remoteModal.classList.add('hidden'); });
+async function openRemote() { remoteModal.classList.remove('hidden'); await renderRemote(); }
+async function renderRemote() {
+  let st;
+  try { st = await api.remoteStatus(); } catch (_) { st = { running: false }; }
+  if (st.running && st.info) {
+    remoteBody.innerHTML =
+      '<p>같은 와이파이의 태블릿/폰 브라우저에서 아래 주소를 여세요:</p>' +
+      st.info.urls.map((u) => `<div class="url">${esc(u)}</div>`).join('') +
+      '<p class="hint">기기에서 큰 버튼으로 Scene을 전환할 수 있습니다.</p>' +
+      '<button id="remoteToggle" class="btn danger">서버 중지</button>';
+  } else {
+    remoteBody.innerHTML =
+      '<p>내장 서버를 켜면 같은 네트워크의 태블릿/폰에서 Scene을 원격으로 전환할 수 있습니다.</p>' +
+      '<button id="remoteToggle" class="btn primary">서버 시작</button>';
+  }
+  document.getElementById('remoteToggle').addEventListener('click', async () => {
+    try {
+      if (st.running) await api.remoteStop();
+      else await api.remoteStart();
+    } catch (err) { showToast('원격 서버 오류: ' + errMsg(err), 'err'); }
+    renderRemote();
+  });
+}
 
 // ---- 사용 가이드 투어 ----
 const guideBtn = $('guideBtn');
@@ -690,9 +950,17 @@ document.addEventListener('keydown', (e) => {
 
 // ---- 초기화 ----
 (async function init() {
+  // 언어 · 쉬운 모드 복원
+  langSel.value = (I18N[lang] ? lang : 'ko');
+  let simple = false;
+  try { simple = localStorage.getItem('x32_simple') === '1'; } catch (_) { /* ignore */ }
+  simpleMode.checked = simple;
+  document.body.classList.toggle('simple', simple);
+
   await loadScenes();
   renderCustom();
   renderCue();
+  applyI18n();
   const status = await api.getStatus();
   if (status.connected) setConnected(status.info);
   else setDisconnected();

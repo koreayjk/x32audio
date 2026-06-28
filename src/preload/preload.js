@@ -19,6 +19,11 @@ contextBridge.exposeInMainWorld('x32api', {
   captureState: (count) => ipcRenderer.invoke('x32:capture-state', { count }),
   applyStates: (states) => ipcRenderer.invoke('x32:apply-states', { states }),
   setAutoSuppress: (enabled, options) => ipcRenderer.invoke('x32:auto-suppress', { enabled, options }),
+  capturePreset: (ch) => ipcRenderer.invoke('x32:capture-preset', { ch }),
+  applyPreset: (ch, preset, withFader) => ipcRenderer.invoke('x32:apply-preset', { ch, preset, withFader }),
+  remoteStart: (port) => ipcRenderer.invoke('remote:start', { port }),
+  remoteStop: () => ipcRenderer.invoke('remote:stop'),
+  remoteStatus: () => ipcRenderer.invoke('remote:status'),
   getStatus: () => ipcRenderer.invoke('x32:status'),
 
   // 이벤트 구독 (main → renderer)

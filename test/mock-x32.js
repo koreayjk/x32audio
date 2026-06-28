@@ -61,7 +61,15 @@ class MockX32 {
     this.server.send([addr, ...args], rinfo.port, rinfo.address);
   }
 
+  /** 콘솔이 자발적으로 파라미터 변경을 푸시하는 상황을 흉내낸다. */
+  push(addr, args) {
+    if (!this._client) return false;
+    this.server.send([addr, ...args], this._client.port, this._client.address);
+    return true;
+  }
+
   _handle(msg, rinfo) {
+    this._client = { port: rinfo.port, address: rinfo.address };
     const addr = msg[0];
     if (addr === '/xremote' || addr === '/renew' || addr === '/unsubscribe') return;
 

@@ -20,22 +20,43 @@
 
     <div class="conn">
       <label class="field">
-        <span>X32 IP 주소</span>
+        <span data-i18n="ipAddr">X32 IP 주소</span>
         <input id="ip" type="text" placeholder="192.168.0.10" value="192.168.0.10" />
       </label>
       <label class="field small">
-        <span>포트</span>
+        <span data-i18n="port">포트</span>
         <input id="port" type="number" value="10023" />
       </label>
       <button id="connectBtn" class="btn primary">연결</button>
       <div id="statusBadge" class="badge off">
         <span class="dot"></span><span id="statusText">연결 안 됨</span>
       </div>
-      <button id="guideBtn" class="btn ghost" title="사용 방법 보기">❓ 사용 가이드</button>
+      <button id="guideBtn" class="btn ghost" title="사용 방법 보기">❓ <span data-i18n="guide">사용 가이드</span></button>
     </div>
   </header>
 
   <div id="info" class="info-strip hidden"></div>
+
+  <!-- 도구 모음 -->
+  <div class="toolbar">
+    <button id="undoBtn" class="btn small ghost" disabled title="직전 상태로 되돌리기">↩ <span data-i18n="undo">되돌리기</span></button>
+    <span class="tb-sep"></span>
+    <button id="backupBtn" class="btn small ghost">💾 <span data-i18n="backup">백업</span></button>
+    <button id="restoreBtn" class="btn small ghost">📂 <span data-i18n="restore">복원</span></button>
+    <input id="restoreFile" type="file" accept="application/json" class="hidden" />
+    <span class="tb-sep"></span>
+    <button id="remoteBtn" class="btn small ghost">📱 <span data-i18n="remote">원격 조작</span></button>
+    <label class="inline switch tb-switch" title="UI를 큰 버튼 위주로 단순화">
+      <input type="checkbox" id="simpleMode" /> 🧩 <span data-i18n="simple">쉬운 모드</span>
+    </label>
+    <span class="tb-spacer"></span>
+    <label class="inline">🌐
+      <select id="langSel">
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+      </select>
+    </label>
+  </div>
 
   <main class="grid">
     <!-- 좌측 컬럼 -->
@@ -43,10 +64,13 @@
       <!-- 채널 상태 -->
       <section class="card channels">
         <div class="card-head">
-          <h2>채널 상태</h2>
+          <h2 data-i18n="channels">채널 상태</h2>
           <div class="head-actions">
+            <label class="inline switch" title="콘솔에서 바뀐 값을 실시간 반영">
+              <input type="checkbox" id="liveSync" disabled /> 🔄 <span data-i18n="live">실시간</span>
+            </label>
             <label class="inline">
-              채널 수
+              <span data-i18n="chCount">채널 수</span>
               <select id="chCount">
                 <option value="8">8</option>
                 <option value="16" selected>16</option>
@@ -73,7 +97,7 @@
       <!-- 예배 순서 큐 -->
       <section class="card cue">
         <div class="card-head">
-          <h2>예배 순서 큐</h2>
+          <h2 data-i18n="cue">예배 순서 큐</h2>
           <div class="head-actions">
             <select id="cueAdd" title="큐에 장면 추가">
               <option value="">＋ 장면 추가…</option>
@@ -97,12 +121,12 @@
       <!-- 피드백 감지 -->
       <section class="card feedback">
         <div class="card-head">
-          <h2>피드백 감지</h2>
+          <h2 data-i18n="feedback">피드백 감지</h2>
           <button id="feedbackBtn" class="btn" disabled>감지 시작</button>
         </div>
         <div class="fb-controls">
           <label class="inline">
-            민감도
+            <span data-i18n="sensitivity">민감도</span>
             <input id="sensitivity" type="range" min="1" max="10" value="5" />
           </label>
           <span id="fbState" class="muted">중지됨</span>
@@ -110,7 +134,7 @@
         <div class="fb-suppress">
           <label class="inline switch" title="피드백 감지 시 해당 주파수를 GEQ에서 자동으로 감쇠">
             <input type="checkbox" id="autoSuppress" disabled />
-            🛡️ 자동 억제
+            🛡️ <span data-i18n="autoSuppress">자동 억제</span>
           </label>
           <label class="inline">FX 슬롯
             <input id="fxSlot" class="mini" type="number" min="1" max="8" value="1" />
@@ -126,11 +150,11 @@
       <!-- Scene 템플릿 -->
       <section class="card scenes">
         <div class="card-head">
-          <h2>Scene 템플릿</h2>
+          <h2 data-i18n="scenes">Scene 템플릿</h2>
         </div>
         <div id="sceneList" class="scene-list"></div>
         <div class="custom-head">
-          <span>사용자 정의 Scene</span>
+          <span data-i18n="custom">사용자 정의 Scene</span>
           <button id="saveStateBtn" class="btn small" disabled title="현재 콘솔의 채널 상태를 저장">💾 현재 상태 저장</button>
         </div>
         <div id="customList" class="scene-list">
@@ -140,14 +164,32 @@
     </div>
   </main>
 
-  <!-- EQ 상세 모달 -->
+  <!-- EQ 상세 + 마이크 프리셋 모달 -->
   <div id="eqModal" class="modal hidden">
     <div class="modal-box">
       <div class="modal-head">
         <h3 id="eqTitle">EQ 상세</h3>
-        <button id="eqClose" class="btn ghost">닫기</button>
+        <button id="eqClose" class="btn ghost" data-i18n="close">닫기</button>
       </div>
       <div id="eqBody" class="eq-body"></div>
+      <div class="preset-area">
+        <div class="custom-head" style="border-top:none;padding-top:0;">
+          <span data-i18n="micPreset">인물별 마이크 프리셋</span>
+          <button id="savePresetBtn" class="btn small">💾 <span data-i18n="savePreset">이 채널 저장</span></button>
+        </div>
+        <div id="presetList" class="preset-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 원격 조작 모달 -->
+  <div id="remoteModal" class="modal hidden">
+    <div class="modal-box" style="width:440px;">
+      <div class="modal-head">
+        <h3>📱 <span data-i18n="remoteTitle">태블릿/폰 원격 조작</span></h3>
+        <button id="remoteClose" class="btn ghost" data-i18n="close">닫기</button>
+      </div>
+      <div class="remote-body" id="remoteBody"></div>
     </div>
   </div>
 

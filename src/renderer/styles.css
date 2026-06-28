@@ -191,6 +191,54 @@ td.empty, .empty td { color: var(--muted); text-align: center; padding: 28px 12p
 
 .main-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
+/* ---- 도구 모음 ---- */
+.toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 20px; background: var(--bg2); border-bottom: 1px solid var(--line);
+}
+.tb-sep { width: 1px; height: 18px; background: var(--line); }
+.tb-spacer { flex: 1; }
+.tb-switch { padding: 4px 8px; border-radius: 7px; }
+.toolbar select { background: var(--card2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+
+/* ---- 인물별 프리셋 ---- */
+.preset-area { padding: 4px 16px 16px; border-top: 1px solid var(--line); }
+.preset-list { display: flex; flex-direction: column; gap: 6px; }
+.preset-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px;
+}
+.preset-item .pname { flex: 1; font-size: 13.5px; }
+.preset-item .pmeta { font-size: 11px; color: var(--muted); }
+
+/* ---- 원격 ---- */
+.remote-body { padding: 18px 20px; }
+.remote-body .url {
+  font-size: 18px; font-weight: 700; color: var(--green);
+  background: var(--bg2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px 14px; margin: 8px 0; word-break: break-all; text-align: center;
+}
+.remote-body p { color: var(--muted); font-size: 13px; margin: 8px 0; }
+.remote-body .hint { font-size: 12px; }
+
+/* ---- 쉬운 모드 ---- */
+body.simple .channels .table-wrap,
+body.simple .feedback .fb-controls,
+body.simple .feedback .fb-suppress,
+body.simple .feedback .spectrum,
+body.simple .feedback .alerts,
+body.simple .cue,
+body.simple .custom-head,
+body.simple #customList,
+body.simple .channels .head-actions { display: none; }
+body.simple .scene { padding: 18px 16px; }
+body.simple .scene .ico { font-size: 30px; }
+body.simple .scene .name { font-size: 17px; }
+body.simple .scene .desc { display: none; }
+body.simple .grid { grid-template-columns: 1fr; }
+body.simple .feedback { display: none; }
+
 /* ---- 자동 억제 ---- */
 .fb-suppress {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;

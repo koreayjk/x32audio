@@ -4,10 +4,16 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { X32Manager } = require('./x32');
 const { listScenes } = require('./scenes');
+const { RemoteServer } = require('./remote-server');
 
 const isDev = process.argv.includes('--dev');
 let win = null;
 const x32 = new X32Manager();
+const remote = new RemoteServer({
+  getScenes: () => listScenes(),
+  applyScene: (id) => x32.applyScene(id),
+  getStatus: () => ({ connected: x32.connected, info: x32.info }),
+});
 
 function createWindow() {
   win = new BrowserWindow({
@@ -43,6 +49,7 @@ x32.on('feedback-clear', (info) => send('x32:feedback-clear', info));
 x32.on('meters', (spectrum) => send('x32:meters', spectrum));
 x32.on('scene-applied', (r) => send('x32:scene-applied', r));
 x32.on('suppress-info', (info) => send('x32:suppress-info', info));
+x32.on('param', (address, args) => send('x32:param', { address, args }));
 
 // ---- IPC 핸들러 ----
 ipcMain.handle('x32:connect', async (_e, { host, port }) => {
@@ -91,6 +98,28 @@ ipcMain.handle('x32:auto-suppress', async (_e, { enabled, options }) => {
   return x32.setAutoSuppress(enabled, options);
 });
 
+ipcMain.handle('x32:capture-preset', async (_e, { ch }) => {
+  return x32.captureChannelPreset(ch);
+});
+
+ipcMain.handle('x32:apply-preset', async (_e, { ch, preset, withFader }) => {
+  return x32.applyChannelPreset(ch, preset, withFader);
+});
+
+ipcMain.handle('remote:start', async (_e, { port }) => {
+  return remote.start(port || 8723);
+});
+
+ipcMain.handle('remote:stop', async () => {
+  await remote.stop();
+  return true;
+});
+
+ipcMain.handle('remote:status', async () => ({
+  running: remote.running,
+  info: remote.running ? remote.info() : null,
+}));
+
 ipcMain.handle('x32:status', async () => ({
   connected: x32.connected,
   info: x32.info,
@@ -108,4 +137,4 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-app.on('before-quit', () => x32.disconnect());
+app.on('before-quit', () => { x32.disconnect(); remote.stop(); });

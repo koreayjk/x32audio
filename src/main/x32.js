@@ -285,6 +285,72 @@ class X32Manager extends EventEmitter {
     return count;
   }
 
+  // ---- 인물별 마이크 프리셋 ----
+
+  /**
+   * 한 채널의 "소리" 설정(EQ 4밴드·로우컷·트림·페이더)을 원시값으로 캡처한다.
+   * 사람별 마이크 프리셋 저장에 사용한다.
+   */
+  async captureChannelPreset(ch) {
+    const id = util.chId(ch);
+    const base = `/ch/${id}`;
+    const num = (a) => (typeof a[0] === 'number' ? a[0] : null);
+
+    const [eqOn, hpon, hpf, trim, fader] = await Promise.all([
+      this.bus.query(`${base}/eq/on`).catch(() => [null]),
+      this.bus.query(`${base}/preamp/hpon`).catch(() => [null]),
+      this.bus.query(`${base}/preamp/hpf`).catch(() => [null]),
+      this.bus.query(`${base}/preamp/trim`).catch(() => [null]),
+      this.bus.query(`${base}/mix/fader`).catch(() => [null]),
+    ]);
+    const bands = [];
+    for (let b = 1; b <= 4; b++) {
+      const [type, f, g, q] = await Promise.all([
+        this.bus.query(`${base}/eq/${b}/type`).catch(() => [null]),
+        this.bus.query(`${base}/eq/${b}/f`).catch(() => [null]),
+        this.bus.query(`${base}/eq/${b}/g`).catch(() => [null]),
+        this.bus.query(`${base}/eq/${b}/q`).catch(() => [null]),
+      ]);
+      bands.push({ type: num(type), f: num(f), g: num(g), q: num(q) });
+    }
+    return {
+      eqOn: eqOn[0] === 1 || eqOn[0] === true,
+      hpon: hpon[0] === 1 || hpon[0] === true,
+      hpf: num(hpf),
+      trim: num(trim),
+      fader: num(fader),
+      bands,
+    };
+  }
+
+  /**
+   * 캡처된 채널 프리셋을 특정 채널에 적용한다.
+   * @param {boolean} [withFader=false] 페이더까지 적용할지 (보통 EQ만 적용)
+   * @returns {number} 전송한 명령 개수
+   */
+  applyChannelPreset(ch, preset, withFader = false) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    if (!preset) return 0;
+    const id = util.chId(ch);
+    const base = `/ch/${id}`;
+    let n = 0;
+    const send = (addr, arg) => { this.bus.send(addr, [arg]); n++; };
+
+    send(`${base}/eq/on`, util.i(preset.eqOn ? 1 : 0));
+    (preset.bands || []).forEach((bd, idx) => {
+      const b = idx + 1;
+      if (bd.type != null) send(`${base}/eq/${b}/type`, util.i(bd.type));
+      if (bd.f != null) send(`${base}/eq/${b}/f`, util.f(bd.f));
+      if (bd.g != null) send(`${base}/eq/${b}/g`, util.f(bd.g));
+      if (bd.q != null) send(`${base}/eq/${b}/q`, util.f(bd.q));
+    });
+    send(`${base}/preamp/hpon`, util.i(preset.hpon ? 1 : 0));
+    if (preset.hpf != null) send(`${base}/preamp/hpf`, util.f(preset.hpf));
+    if (preset.trim != null) send(`${base}/preamp/trim`, util.f(preset.trim));
+    if (withFader && preset.fader != null) send(`${base}/mix/fader`, util.f(preset.fader));
+    return n;
+  }
+
   // ---- 자동 피드백 억제 ----
 
   setAutoSuppress(enabled, options) {
