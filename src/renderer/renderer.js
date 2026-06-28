@@ -1172,11 +1172,13 @@ mixerPhoto.addEventListener('change', async () => {
   const file = mixerPhoto.files[0];
   mixerPhoto.value = '';
   if (!file) return;
-  const dataUrl = await new Promise((res) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result);
-    r.readAsDataURL(file);
-  });
+  let dataUrl;
+  try {
+    dataUrl = await loadAndDownscale(file, 1280); // 큰 사진도 자동으로 줄여 안정적으로 표시/저장
+  } catch (err) {
+    showToast('이 사진은 표시할 수 없어요. JPG 또는 PNG 파일로 올려주세요.', 'err');
+    return;
+  }
   customPhoto = { dataUrl, coords: {} };
   saveJson(PHOTO_KEY, customPhoto);
   mixerModel.value = 'custom';
@@ -1184,6 +1186,32 @@ mixerPhoto.addEventListener('change', async () => {
   showToast('사진 업로드 완료. 이제 노브 위치를 지정하세요.', 'ok');
   startCalibration();
 });
+
+// 업로드 이미지를 캔버스로 다시 그려 가로 maxW 이하 JPEG 로 축소 (용량·렌더링 문제 방지)
+function loadAndDownscale(file, maxW) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('read'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('decode'));
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, maxW / (img.naturalWidth || maxW));
+          const w = Math.max(1, Math.round((img.naturalWidth || maxW) * scale));
+          const h = Math.max(1, Math.round((img.naturalHeight || maxW) * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        } catch (e) { reject(e); }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 // 노브 위치 보정 (사진 위 4점 클릭)
 const CALIB_ORDER = [['gain', 'GAIN(게인)'], ['high', 'HIGH(고음)'], ['mid', 'MID(중음)'], ['low', 'LOW(저음)']];
