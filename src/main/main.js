@@ -2,13 +2,14 @@
 
 const { app, BrowserWindow, ipcMain, session } = require('electron');
 const path = require('path');
-const { X32Manager } = require('./x32');
 const { listScenes } = require('./scenes');
 const { RemoteServer } = require('./remote-server');
+const { listMixers, createMixer } = require('./mixer-registry');
 
 const isDev = process.argv.includes('--dev');
 let win = null;
-const x32 = new X32Manager();
+// 현재 활성 믹서 어댑터 (기본: X32). mixer:select 로 교체 가능.
+let x32 = createMixer('x32');
 
 // 원격에서 제어할 예배 순서 큐 상태 (렌더러가 동기화)
 let cueState = { items: [], index: -1 };
@@ -67,24 +68,43 @@ function createWindow() {
   win.on('closed', () => { win = null; });
 }
 
-// ---- X32 이벤트 → 렌더러 전달 ----
+// ---- 믹서 이벤트 → 렌더러 전달 ----
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
-x32.on('connected', (info) => send('x32:connected', info));
-x32.on('disconnected', () => send('x32:disconnected'));
-x32.on('error', (err) => send('x32:error', String(err && err.message ? err.message : err)));
-x32.on('feedback', (alert) => send('x32:feedback', alert));
-x32.on('feedback-clear', (info) => send('x32:feedback-clear', info));
-x32.on('meters', (spectrum) => send('x32:meters', spectrum));
-x32.on('scene-applied', (r) => send('x32:scene-applied', r));
-x32.on('suppress-info', (info) => send('x32:suppress-info', info));
-x32.on('param', (address, args) => send('x32:param', { address, args }));
-x32.on('service-started', (r) => send('x32:service-started', r));
-x32.on('sermon-duck', (r) => send('x32:sermon-duck', r));
-x32.on('loudness', (r) => send('x32:loudness', r));
+
+// 활성 믹서 어댑터에 이벤트 핸들러를 연결 (어댑터 교체 시 재호출)
+function wireMixer(m) {
+  m.on('connected', (info) => send('x32:connected', info));
+  m.on('disconnected', () => send('x32:disconnected'));
+  m.on('error', (err) => send('x32:error', String(err && err.message ? err.message : err)));
+  m.on('feedback', (alert) => send('x32:feedback', alert));
+  m.on('feedback-clear', (info) => send('x32:feedback-clear', info));
+  m.on('meters', (spectrum) => send('x32:meters', spectrum));
+  m.on('scene-applied', (r) => send('x32:scene-applied', r));
+  m.on('suppress-info', (info) => send('x32:suppress-info', info));
+  m.on('param', (address, args) => send('x32:param', { address, args }));
+  m.on('service-started', (r) => send('x32:service-started', r));
+  m.on('sermon-duck', (r) => send('x32:sermon-duck', r));
+  m.on('loudness', (r) => send('x32:loudness', r));
+}
+wireMixer(x32);
 
 // ---- IPC 핸들러 ----
+ipcMain.handle('mixer:list', async () => listMixers());
+
+ipcMain.handle('mixer:select', async (_e, { id }) => {
+  const entry = listMixers().find((m) => m.id === id);
+  if (!entry) return { ok: false, error: '알 수 없는 믹서' };
+  if (!entry.supported) return { ok: false, status: entry.status, name: entry.name };
+  const currentId = x32.constructor && x32.constructor.meta ? x32.constructor.meta.id : null;
+  if (currentId === id) return { ok: true, id };
+  try { x32.disconnect(); } catch (_) { /* ignore */ }
+  x32 = createMixer(id);
+  wireMixer(x32);
+  return { ok: true, id };
+});
+
 ipcMain.handle('x32:connect', async (_e, { host, port }) => {
   const info = await x32.connect(host, port || 10023);
   return info;
@@ -186,6 +206,8 @@ ipcMain.handle('x32:loudness-stop', async () => {
 ipcMain.handle('x32:status', async () => ({
   connected: x32.connected,
   info: x32.info,
+  mixer: x32.constructor && x32.constructor.meta ? x32.constructor.meta : null,
+  capabilities: x32.capabilities || null,
 }));
 
 // ---- 앱 생명주기 ----

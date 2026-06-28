@@ -973,7 +973,7 @@ function setServiceEnabled(on) {
 // ==== 믹서 선택 + 아날로그 믹서 가이드 ====
 const mixerBtn = $('mixerBtn');
 const mixerSelect = $('mixerSelect');
-const msX32 = $('msX32');
+const msDigital = $('msDigital');
 const msAnalog = $('msAnalog');
 const analogGuide = $('analogGuide');
 const agBack = $('agBack');
@@ -984,12 +984,37 @@ const agBalance = $('agBalance');
 const agAdvice = $('agAdvice');
 const MIXER_KEY = 'x32_mixer_type';
 
-mixerBtn.addEventListener('click', () => mixerSelect.classList.remove('hidden'));
-msX32.addEventListener('click', () => {
-  try { localStorage.setItem(MIXER_KEY, 'digital-x32'); } catch (_) { /* ignore */ }
+mixerBtn.addEventListener('click', () => { renderMixerOptions(); mixerSelect.classList.remove('hidden'); });
+
+// 믹서 목록을 레지스트리에서 받아 동적으로 그린다 (브랜드 추가 시 자동 반영)
+async function renderMixerOptions() {
+  let list = [];
+  try { list = await api.mixerList(); } catch (_) { /* ignore */ }
+  const digital = list.filter((m) => m.kind === 'digital');
+  msDigital.innerHTML = '';
+  for (const m of digital) {
+    const b = document.createElement('button');
+    b.className = 'ms-opt' + (m.supported ? '' : ' disabled');
+    if (!m.supported) b.disabled = true;
+    b.innerHTML =
+      `<span class="ms-ic">🎚️</span><b>${esc(m.brand)} ${esc(m.name)}</b>` +
+      `<span class="ms-badge ${m.supported ? 'ok' : 'soon'}">${m.supported ? '지원' : '추후 지원 예정'}</span>` +
+      `<p>${esc(m.note || '')}</p>`;
+    if (m.supported) b.addEventListener('click', () => selectDigital(m.id));
+    msDigital.appendChild(b);
+  }
+}
+
+async function selectDigital(id) {
+  try {
+    const r = await api.mixerSelect(id);
+    if (!r.ok) { showToast(`${r.name || '해당 믹서'}는 추후 지원 예정입니다.`, 'err'); return; }
+  } catch (err) { showToast(errMsg(err), 'err'); return; }
+  try { localStorage.setItem(MIXER_KEY, 'digital-' + id); } catch (_) { /* ignore */ }
   mixerSelect.classList.add('hidden');
   analogGuide.classList.add('hidden');
-});
+  showToast('믹서를 선택했습니다.', 'ok');
+}
 msAnalog.addEventListener('click', () => {
   try { localStorage.setItem(MIXER_KEY, 'analog'); } catch (_) { /* ignore */ }
   mixerSelect.classList.add('hidden');
@@ -1344,6 +1369,7 @@ document.addEventListener('keydown', (e) => {
   let mixerType = null;
   try { mixerType = localStorage.getItem(MIXER_KEY); } catch (_) { /* ignore */ }
   if (!mixerType) {
+    renderMixerOptions();
     mixerSelect.classList.remove('hidden');
   } else {
     let seen = false;

@@ -1,6 +1,7 @@
 'use strict';
 
 const { EventEmitter } = require('events');
+const { MixerAdapter } = require('./mixer-base');
 const { OscBus } = require('./osc-bus');
 const { FeedbackDetector } = require('./feedback');
 const { FeedbackSuppressor } = require('./suppressor');
@@ -42,7 +43,18 @@ function normalizeSpectrum(vals) {
   });
 }
 
-class X32Manager extends EventEmitter {
+class X32Manager extends MixerAdapter {
+  static get meta() {
+    return { id: 'x32', brand: 'Behringer / Midas', name: 'X32 / M32', status: 'supported', kind: 'digital' };
+  }
+
+  get capabilities() {
+    return {
+      read: true, faderControl: true, mute: true, scenes: true, presets: true,
+      feedback: true, autoSuppress: true, outputs: true, loudness: true,
+    };
+  }
+
   constructor() {
     super();
     this.bus = new OscBus();

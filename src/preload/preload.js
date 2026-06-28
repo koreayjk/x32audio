@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('x32api', {
   readChannels: (count) => ipcRenderer.invoke('x32:read-channels', { count }),
   readEq: (ch) => ipcRenderer.invoke('x32:read-eq', { ch }),
   getScenes: () => ipcRenderer.invoke('x32:scenes'),
+  mixerList: () => ipcRenderer.invoke('mixer:list'),
+  mixerSelect: (id) => ipcRenderer.invoke('mixer:select', { id }),
   applyScene: (sceneId) => ipcRenderer.invoke('x32:apply-scene', { sceneId }),
   startFeedback: (options) => ipcRenderer.invoke('x32:start-feedback', options),
   stopFeedback: () => ipcRenderer.invoke('x32:stop-feedback'),
