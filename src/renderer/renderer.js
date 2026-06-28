@@ -294,10 +294,135 @@ api.on('meters', (spectrum) => renderSpectrum(spectrum));
 api.on('feedback', (alert) => addAlert(alert));
 api.on('feedback-clear', (info) => clearAlert(info));
 
+// ---- 사용 가이드 투어 ----
+const guideBtn = $('guideBtn');
+const tour = $('tour');
+const tourSpot = $('tourSpot');
+const tourCard = $('tourCard');
+const tourStepNo = $('tourStepNo');
+const tourTitle = $('tourTitle');
+const tourText = $('tourText');
+const tourPrev = $('tourPrev');
+const tourNext = $('tourNext');
+const tourSkip = $('tourSkip');
+const GUIDE_SEEN_KEY = 'x32_guide_seen';
+
+const TOUR_STEPS = [
+  {
+    sel: '.conn',
+    title: '1단계 · X32에 연결',
+    text: '먼저 X32의 IP 주소를 입력하고 [연결]을 누르세요.\nX32의 IP는 콘솔 Setup → Network 에서 확인할 수 있어요.\n연결되면 콘솔 모델·펌웨어 정보가 표시됩니다.',
+  },
+  {
+    sel: '.channels',
+    title: '2단계 · 채널 상태 읽기',
+    text: '[상태 읽기]를 누르면 각 채널의 이름·레벨(dB)·음소거·EQ 상태를 불러옵니다.\n각 줄의 [EQ 보기]로 4밴드 EQ(주파수·게인·Q) 상세도 확인할 수 있어요.',
+  },
+  {
+    sel: '.feedback',
+    title: '3단계 · 피드백(하울링) 감지',
+    text: '[감지 시작]을 누르면 "삐—" 하는 하울링을 실시간으로 감시합니다.\n의심되는 주파수를 경고로 알려줘요. 오른쪽 [민감도]로 감도를 조절하세요.\n(콘솔 RTA 소스를 메인 L/R로 두면 가장 정확합니다.)',
+  },
+  {
+    sel: '.scenes',
+    title: '4단계 · Scene 템플릿',
+    text: '예배 순서에 맞는 버튼을 누르면 채널이 한 번에 세팅됩니다.\n설교 / 찬양팀 / 기도·묵상 / 광고 / 전체 음소거 등.\n긴급할 때는 [전체 음소거]로 바로 소리를 끌 수 있어요.',
+  },
+  {
+    sel: '#guideBtn',
+    title: '준비 완료! 🎉',
+    text: '이제 시작해 보세요.\n언제든 이 [❓ 사용 가이드] 버튼을 눌러 안내를 다시 볼 수 있습니다.',
+  },
+];
+
+let tourIdx = 0;
+
+function openTour(start = 0) {
+  tourIdx = start;
+  tour.classList.remove('hidden');
+  showTourStep();
+}
+
+function closeTour() {
+  tour.classList.add('hidden');
+  try { localStorage.setItem(GUIDE_SEEN_KEY, '1'); } catch (_) { /* ignore */ }
+}
+
+function showTourStep() {
+  const step = TOUR_STEPS[tourIdx];
+  const el = document.querySelector(step.sel);
+  tourStepNo.textContent = `${tourIdx + 1} / ${TOUR_STEPS.length}`;
+  tourTitle.textContent = step.title;
+  tourText.textContent = step.text;
+  tourPrev.disabled = tourIdx === 0;
+  tourNext.textContent = tourIdx === TOUR_STEPS.length - 1 ? '시작하기' : '다음';
+
+  if (!el) return;
+  el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  requestAnimationFrame(() => positionTour(el));
+}
+
+function positionTour(el) {
+  const r = el.getBoundingClientRect();
+  const pad = 6;
+  tourSpot.style.top = `${r.top - pad}px`;
+  tourSpot.style.left = `${r.left - pad}px`;
+  tourSpot.style.width = `${r.width + pad * 2}px`;
+  tourSpot.style.height = `${r.height + pad * 2}px`;
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const cardR = tourCard.getBoundingClientRect();
+  const cardW = cardR.width || 320;
+  const cardH = cardR.height || 160;
+
+  // 아래에 공간이 있으면 아래, 없으면 위에 배치
+  let top = r.bottom + 14;
+  if (top + cardH + 12 > vh) top = r.top - cardH - 14;
+  if (top < 12) top = Math.max(12, (vh - cardH) / 2);
+
+  let left = r.left;
+  if (left + cardW + 12 > vw) left = vw - cardW - 12;
+  if (left < 12) left = 12;
+
+  tourCard.style.top = `${top}px`;
+  tourCard.style.left = `${left}px`;
+}
+
+tourNext.addEventListener('click', () => {
+  if (tourIdx >= TOUR_STEPS.length - 1) return closeTour();
+  tourIdx += 1;
+  showTourStep();
+});
+tourPrev.addEventListener('click', () => {
+  if (tourIdx === 0) return;
+  tourIdx -= 1;
+  showTourStep();
+});
+tourSkip.addEventListener('click', closeTour);
+guideBtn.addEventListener('click', () => openTour(0));
+window.addEventListener('resize', () => {
+  if (!tour.classList.contains('hidden')) {
+    const el = document.querySelector(TOUR_STEPS[tourIdx].sel);
+    if (el) positionTour(el);
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (tour.classList.contains('hidden')) return;
+  if (e.key === 'Escape') closeTour();
+  else if (e.key === 'ArrowRight') tourNext.click();
+  else if (e.key === 'ArrowLeft') tourPrev.click();
+});
+
 // ---- 초기화 ----
 (async function init() {
   await loadScenes();
   const status = await api.getStatus();
   if (status.connected) setConnected(status.info);
   else setDisconnected();
+
+  // 처음 실행 시 가이드 자동 표시
+  let seen = false;
+  try { seen = localStorage.getItem(GUIDE_SEEN_KEY) === '1'; } catch (_) { /* ignore */ }
+  if (!seen) setTimeout(() => openTour(0), 400);
 })();

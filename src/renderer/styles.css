@@ -218,4 +218,32 @@ td.empty, .empty td { color: var(--muted); text-align: center; padding: 28px 12p
 .toast.ok { border-color: var(--green); }
 .toast.err { border-color: var(--red); }
 
+/* ---- 사용 가이드 투어 ---- */
+.tour { position: fixed; inset: 0; z-index: 150; }
+.tour-spot {
+  position: fixed;
+  border-radius: 12px;
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 0 9999px rgba(8, 10, 16, .74);
+  pointer-events: none;
+  transition: top .25s ease, left .25s ease, width .25s ease, height .25s ease;
+  z-index: 151;
+}
+.tour-card {
+  position: fixed;
+  width: 320px; max-width: 90vw;
+  background: var(--card);
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .5);
+  z-index: 152;
+  transition: top .25s ease, left .25s ease;
+}
+.tour-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.tour-stepno { color: var(--primary); font-weight: 700; font-size: 12px; }
+.tour-card h3 { font-size: 16px; margin-bottom: 6px; }
+.tour-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; white-space: pre-line; }
+.tour-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
 .hidden { display: none !important; }
