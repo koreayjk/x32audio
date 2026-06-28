@@ -382,7 +382,7 @@ body.simple .feedback { display: none; }
   padding: 14px 22px; border-bottom: 1px solid var(--line); background: var(--bg2);
 }
 .ag-bar h2 { font-size: 18px; }
-.ag-body { display: grid; grid-template-columns: 1fr 360px; gap: 26px; padding: 30px 24px; max-width: 1000px; margin: 0 auto; }
+.ag-body { display: grid; grid-template-columns: 360px 1fr; gap: 26px; padding: 30px 24px; max-width: 1180px; margin: 0 auto; }
 .ag-readouts { display: flex; flex-direction: column; gap: 14px; }
 .ag-readouts .ro { display: flex; align-items: center; gap: 12px; }
 .ag-readouts .ro > span { width: 92px; color: var(--muted); font-size: 13px; }
@@ -403,10 +403,16 @@ body.simple .feedback { display: none; }
 .ag-mixer-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .ag-mixer-head select { background: var(--card2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
 .ag-mixer {
-  position: relative; width: 240px; max-width: 100%;
+  position: relative; width: 100%; max-width: 560px;
   border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #20263a;
 }
-.mixer-canvas { display: block; width: 100%; height: auto; }
+.mixer-canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+.calib-dot {
+  position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+  background: rgba(91,140,255,.95); color: #fff; border: 2px solid #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;
+  pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.5);
+}
 .knob-hi {
   position: absolute; width: 56px; height: 56px; margin: -28px 0 0 -28px;
   border-radius: 50%; border: 3px solid var(--amber);
@@ -417,9 +423,10 @@ body.simple .feedback { display: none; }
 .khi-arrow { position: absolute; right: -30px; top: 50%; transform: translateY(-50%); font-size: 24px; font-weight: 800; color: var(--amber); }
 .knob-hi.alarm .khi-arrow { color: var(--red); }
 .calib-hint {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  text-align: center; padding: 16px; background: rgba(8,10,16,.7); cursor: crosshair;
-  font-size: 16px; font-weight: 700; color: var(--amber);
+  position: absolute; left: 0; right: 0; top: 0;
+  padding: 9px 14px; text-align: center; pointer-events: none;
+  background: linear-gradient(180deg, rgba(91,140,255,.96), rgba(91,140,255,.82));
+  color: #fff; font-size: 15px; font-weight: 700;
 }
 
 @media (max-width: 760px) {

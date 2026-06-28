@@ -1215,9 +1215,21 @@ function loadAndDownscale(file, maxW) {
 
 // 노브 위치 보정 (사진 위 4점 클릭)
 const CALIB_ORDER = [['gain', 'GAIN(게인)'], ['high', 'HIGH(고음)'], ['mid', 'MID(중음)'], ['low', 'LOW(저음)']];
+const KNOB_LETTER = { gain: 'G', high: 'H', mid: 'M', low: 'L' };
 let calibActive = false;
 let calibQueue = [];
 let calibCoords = {};
+function clearCalibDots() {
+  agMixer.querySelectorAll('.calib-dot').forEach((d) => d.remove());
+}
+function addCalibDot(k, x, y) {
+  const d = document.createElement('div');
+  d.className = 'calib-dot';
+  d.textContent = KNOB_LETTER[k] || '•';
+  d.style.left = `${x * 100}%`;
+  d.style.top = `${y * 100}%`;
+  agMixer.appendChild(d);
+}
 function startCalibration() {
   if (mixerModel.value !== 'custom' || !customPhoto || !customPhoto.dataUrl) {
     return showToast('먼저 내 믹서 사진을 업로드하세요.', 'err');
@@ -1226,6 +1238,7 @@ function startCalibration() {
   calibQueue = CALIB_ORDER.slice();
   calibCoords = {};
   knobHi.classList.add('hidden');
+  clearCalibDots();
   nextCalib();
 }
 function nextCalib() {
@@ -1239,7 +1252,8 @@ function nextCalib() {
     showToast('노브 위치 저장 완료!', 'ok');
     return;
   }
-  calibHint.textContent = `${calibQueue[0][1]} 노브를 클릭하세요`;
+  const step = CALIB_ORDER.length - calibQueue.length + 1;
+  calibHint.textContent = `(${step}/4) ${calibQueue[0][1]} 노브를 사진에서 클릭하세요`;
   calibHint.classList.remove('hidden');
 }
 calibBtn.addEventListener('click', startCalibration);
@@ -1251,6 +1265,7 @@ agMixer.addEventListener('click', (e) => {
   if (x < 0 || x > 1 || y < 0 || y > 1) return;
   const [k] = calibQueue.shift();
   calibCoords[k] = { x, y };
+  addCalibDot(k, x, y);
   nextCalib();
 });
 
