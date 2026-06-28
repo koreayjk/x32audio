@@ -356,6 +356,18 @@ class X32Manager extends EventEmitter {
     return strips.map((s) => ({ ch: s.ch, on: s.on, fader: s.fader }));
   }
 
+  /** 단일 채널 페이더를 직접 제어한다 (앱 → 콘솔, 양방향). */
+  setChannelFader(ch, fader) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    this.bus.send(`/ch/${util.chId(ch)}/mix/fader`, [util.f(util.clamp(fader, 0, 1))]);
+  }
+
+  /** 단일 채널 음소거를 직접 제어한다. */
+  setChannelMute(ch, on) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    this.bus.send(`/ch/${util.chId(ch)}/mix/on`, [util.i(on ? 1 : 0)]);
+  }
+
   /**
    * 캡처된 채널 상태를 X32 에 적용한다.
    * @param {Array<{ch,on,fader}>} states

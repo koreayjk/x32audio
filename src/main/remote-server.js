@@ -87,6 +87,25 @@ class RemoteServer {
         const count = this.handlers.applyScene(id);
         return this._json(res, 200, { ok: true, id, count });
       }
+      if (req.method === 'GET' && url.pathname === '/api/cue') {
+        return this._json(res, 200, this.handlers.getCue());
+      }
+      if (req.method === 'POST' && (url.pathname === '/api/cue/next'
+        || url.pathname === '/api/cue/prev' || url.pathname === '/api/cue/goto')) {
+        if (!this.handlers.getStatus().connected) return this._json(res, 409, { error: '콘솔 미연결' });
+        const cur = this.handlers.getCue();
+        let target;
+        if (url.pathname === '/api/cue/next') target = cur.index + 1;
+        else if (url.pathname === '/api/cue/prev') target = cur.index - 1;
+        else { const body = await readBody(req); target = body.index; }
+        const r = this.handlers.gotoCue(target);
+        return this._json(res, r.ok ? 200 : 400, r);
+      }
+      if (req.method === 'POST' && url.pathname === '/api/mute') {
+        if (!this.handlers.getStatus().connected) return this._json(res, 409, { error: '콘솔 미연결' });
+        this.handlers.allMute();
+        return this._json(res, 200, { ok: true });
+      }
       this._json(res, 404, { error: 'not found' });
     } catch (err) {
       this._json(res, 500, { error: String(err && err.message ? err.message : err) });
@@ -114,26 +133,49 @@ const PAGE = `<!DOCTYPE html><html lang="ko"><head>
 body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;background:#14171f;color:#eef1f8}
 header{padding:16px;background:#1b1f2a;border-bottom:1px solid #333a52;display:flex;justify-content:space-between;align-items:center}
 header b{font-size:17px}#st{font-size:13px;color:#9aa3bd}#st.on{color:#3ecf8e}
-.grid{padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sec{padding:6px 16px;color:#9aa3bd;font-size:13px;font-weight:600;margin-top:8px}
+.grid{padding:8px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
 button.sc{padding:22px 12px;border-radius:14px;border:1px solid #333a52;background:#232838;color:#eef1f8;font-size:17px;font-weight:600}
 button.sc:active{background:#39426a}button.sc.danger{border-color:#ff5d6c;color:#ff5d6c}
 button.sc .e{display:block;font-size:30px;margin-bottom:6px}
+.cuebar{display:flex;align-items:center;gap:10px;padding:8px 16px}
+.cuebar button{flex:1;padding:20px 8px;border-radius:14px;border:1px solid #333a52;background:#232838;color:#eef1f8;font-size:18px;font-weight:700}
+.cuebar button.next{background:#4f7cff;border-color:#4f7cff}
+.cuebar button:active{filter:brightness(1.2)}
+.cuebar button:disabled{opacity:.4}
+#cueNow{padding:0 16px 6px;font-size:15px}#cueNow b{color:#3ecf8e}
+.mute{margin:10px 16px;width:calc(100% - 32px);padding:16px;border-radius:14px;border:1px solid #ff5d6c;background:rgba(255,93,108,.12);color:#ff5d6c;font-size:16px;font-weight:700}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#11141d;border:1px solid #3ecf8e;padding:12px 20px;border-radius:10px;opacity:0;transition:.2s}
 #toast.show{opacity:1}
 </style></head><body>
 <header><b>🎛️ X32 원격</b><span id="st">연결 확인 중…</span></header>
+<div id="cueSec" style="display:none">
+ <div class="sec">예배 순서 큐</div>
+ <div id="cueNow">현재: <b id="cueName">—</b> <span id="cuePos"></span></div>
+ <div class="cuebar"><button id="cp">◀ 이전</button><button class="next" id="cn">▶ 다음</button></div>
+</div>
+<button class="mute" id="muteBtn">🔇 전체 음소거</button>
+<div class="sec">Scene</div>
 <div class="grid" id="g"></div>
 <div id="toast"></div>
 <script>
 const g=document.getElementById('g'),st=document.getElementById('st'),toast=document.getElementById('toast');
+const cueSec=document.getElementById('cueSec'),cueName=document.getElementById('cueName'),cuePos=document.getElementById('cuePos'),cp=document.getElementById('cp'),cn=document.getElementById('cn');
 let tt;function showToast(m){toast.textContent=m;toast.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toast.classList.remove('show'),1800);}
 async function load(){const r=await fetch('/api/scenes');const{scenes}=await r.json();g.innerHTML='';
  for(const s of scenes){const b=document.createElement('button');b.className='sc'+(s.danger?' danger':'');
  b.innerHTML='<span class="e">'+(s.icon||'🎬')+'</span>'+s.name;b.onclick=()=>apply(s);g.appendChild(b);}}
 async function apply(s){try{const r=await fetch('/api/scene',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:s.id})});
  const j=await r.json();if(r.ok)showToast('▶ '+s.name+' 적용');else showToast('⚠ '+(j.error||'실패'));}catch(e){showToast('⚠ 통신 오류');}}
+async function cue(path){try{const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const j=await r.json();if(!r.ok)showToast('⚠ '+(j.error||'실패'));else loadCue();}catch(e){showToast('⚠ 통신 오류');}}
+cp.onclick=()=>cue('/api/cue/prev');cn.onclick=()=>cue('/api/cue/next');
+document.getElementById('muteBtn').onclick=async()=>{try{const r=await fetch('/api/mute',{method:'POST'});if(r.ok)showToast('🔇 전체 음소거');else showToast('⚠ 실패');}catch(e){showToast('⚠ 통신 오류');}};
+async function loadCue(){try{const r=await fetch('/api/cue');const c=await r.json();
+ if(!c.items||!c.items.length){cueSec.style.display='none';return;}cueSec.style.display='block';
+ const cur=c.items[c.index];cueName.textContent=cur?cur.name:'(시작 전)';cuePos.textContent=(c.index>=0?(c.index+1):'–')+' / '+c.items.length;
+ cp.disabled=c.index<=0;cn.disabled=c.index>=c.items.length-1;}catch(e){}}
 async function poll(){try{const r=await fetch('/api/status');const j=await r.json();
- st.textContent=j.connected?('연결됨 · '+(j.info&&j.info.model||'X32')):'콘솔 미연결';st.className=j.connected?'on':'';}catch(e){st.textContent='앱 연결 끊김';st.className='';}}
+ st.textContent=j.connected?('연결됨 · '+(j.info&&j.info.model||'X32')):'콘솔 미연결';st.className=j.connected?'on':'';}catch(e){st.textContent='앱 연결 끊김';st.className='';}loadCue();}
 load();poll();setInterval(poll,2000);
 </script></body></html>`;
 

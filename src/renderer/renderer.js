@@ -152,19 +152,58 @@ function renderChannels(channels) {
   chRows.clear();
   for (const c of channels) {
     const row = document.createElement('tr');
+    const faderVal = c.fader == null ? 0 : c.fader;
     row.innerHTML =
       `<td>${String(c.ch).padStart(2, '0')}</td>` +
       `<td>${esc(c.name)}</td>` +
-      `<td class="lvl">${esc(c.dbText)} dB</td>` +
-      `<td><span class="pill ${c.on ? 'on' : 'off'}">${c.on ? 'ON' : 'MUTE'}</span></td>` +
+      `<td class="lvl"><input class="fader" type="range" min="0" max="1" step="0.001" value="${faderVal}"${c.fader == null ? ' disabled' : ''} /><span class="lvltext">${esc(c.dbText)} dB</span></td>` +
+      `<td><span class="pill ${c.on ? 'on' : 'off'} mutebtn" role="button" title="클릭하여 음소거 전환">${c.on ? 'ON' : 'MUTE'}</span></td>` +
       `<td><span class="pill ${c.eqOn ? 'eq-on' : 'eq-off'}">${c.eqOn ? 'EQ' : 'OFF'}</span></td>` +
-      `<td><button class="btn small ghost" data-ch="${c.ch}">EQ 보기</button></td>`;
+      `<td><button class="btn small ghost eqbtn">EQ 보기</button></td>`;
     chBody.appendChild(row);
-    chRows.set(c.ch, { tr: row, data: c });
+
+    const slider = row.querySelector('.fader');
+    const lvltext = row.querySelector('.lvltext');
+    const pill = row.querySelector('.mutebtn');
+    const ch = c.ch;
+    chRows.set(ch, { tr: row, slider, lvltext, pill, data: c });
+
+    // 앱 → 콘솔: 페이더 드래그
+    slider.addEventListener('input', () => {
+      const v = parseFloat(slider.value);
+      lvltext.textContent = `${faderToText(v)} dB`;
+      queueFader(ch, v);
+    });
+    slider.addEventListener('pointerdown', () => draggingCh.add(ch));
+    // 앱 → 콘솔: 음소거 토글
+    pill.addEventListener('click', async () => {
+      if (!connected) return;
+      const newOn = pill.classList.contains('off');
+      try {
+        await api.setMute(ch, newOn);
+        pill.className = `pill ${newOn ? 'on' : 'off'} mutebtn`;
+        pill.textContent = newOn ? 'ON' : 'MUTE';
+      } catch (err) { showToast(errMsg(err), 'err'); }
+    });
+    row.querySelector('.eqbtn').addEventListener('click', () => openEq(ch));
   }
-  chBody.querySelectorAll('button[data-ch]').forEach((b) =>
-    b.addEventListener('click', () => openEq(parseInt(b.dataset.ch, 10))));
 }
+
+// 페이더 드래그 → 콘솔 전송 (프레임당 1회로 합침)
+const draggingCh = new Set();
+const faderPending = new Map();
+let faderRAF = null;
+function queueFader(ch, val) {
+  if (!connected) return;
+  faderPending.set(ch, val);
+  if (!faderRAF) faderRAF = requestAnimationFrame(flushFaders);
+}
+function flushFaders() {
+  faderRAF = null;
+  for (const [ch, val] of faderPending) api.setFader(ch, val).catch(() => {});
+  faderPending.clear();
+}
+document.addEventListener('pointerup', () => draggingCh.clear());
 
 // ---- EQ 상세 ----
 async function openEq(ch) {
@@ -570,7 +609,25 @@ function updateCueButtons() {
   if (cueNext) cueNext.disabled = !connected || !has || cueIndex >= cue.length - 1;
   if (cuePrev) cuePrev.disabled = !connected || cueIndex <= 0;
   if (cueReset) cueReset.disabled = !has || cueIndex < 0;
+  syncRemoteCue();
 }
+
+// 원격 조작용으로 큐 상태를 메인에 동기화 (사용자 정의는 채널 상태까지 포함)
+function syncRemoteCue() {
+  const items = cue.map((c) => (c.kind === 'custom'
+    ? { kind: 'custom', name: c.name, states: (customScenes.find((x) => x.id === c.id) || {}).states || [] }
+    : { kind: 'template', name: c.name, id: c.id }));
+  try { api.remoteSetCue(items, cueIndex); } catch (_) { /* ignore */ }
+}
+
+// 원격에서 큐를 넘기면 앱 포인터도 따라간다
+api.on('remote-cue', (e) => {
+  if (!e || typeof e.index !== 'number') return;
+  cueIndex = e.index;
+  renderCue();
+  showToast(`📱 원격: ${e.index + 1}. ${e.name || ''} 적용`, 'ok');
+  setTimeout(loadChannels, 250);
+});
 
 // 스페이스바 = 다음 큐 적용
 document.addEventListener('keydown', (e) => {
@@ -785,11 +842,14 @@ function updateRowFromParam(address, args) {
   if (!entry) return;
   if (m[2] === 'on') {
     const on = args[0] === 1 || args[0] === true;
-    const pill = entry.tr.querySelector('.pill');
-    if (pill) { pill.className = `pill ${on ? 'on' : 'off'}`; pill.textContent = on ? 'ON' : 'MUTE'; }
+    if (entry.pill) {
+      entry.pill.className = `pill ${on ? 'on' : 'off'} mutebtn`;
+      entry.pill.textContent = on ? 'ON' : 'MUTE';
+    }
   } else if (m[2] === 'fader' && typeof args[0] === 'number') {
-    const cell = entry.tr.querySelector('.lvl');
-    if (cell) cell.textContent = faderToText(args[0]) + ' dB';
+    if (draggingCh.has(ch)) return; // 사용자가 조작 중이면 덮어쓰지 않음
+    if (entry.slider) entry.slider.value = String(args[0]);
+    if (entry.lvltext) entry.lvltext.textContent = `${faderToText(args[0])} dB`;
   }
 }
 // 페이더 float → dB 텍스트 (메인 변환식의 렌더러 측 복제)

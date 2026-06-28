@@ -9,10 +9,35 @@ const { RemoteServer } = require('./remote-server');
 const isDev = process.argv.includes('--dev');
 let win = null;
 const x32 = new X32Manager();
+
+// 원격에서 제어할 예배 순서 큐 상태 (렌더러가 동기화)
+let cueState = { items: [], index: -1 };
+
+function gotoCueMain(index) {
+  if (!x32.connected) return { ok: false, error: '콘솔 미연결' };
+  if (index < 0 || index >= cueState.items.length) return { ok: false, error: '범위 초과' };
+  const item = cueState.items[index];
+  try {
+    if (item.kind === 'template') x32.applyScene(item.id);
+    else x32.applyChannelStates(item.states || []);
+  } catch (err) {
+    return { ok: false, error: String(err && err.message ? err.message : err) };
+  }
+  cueState.index = index;
+  send('x32:remote-cue', { index, name: item.name });
+  return { ok: true, index, name: item.name };
+}
+
 const remote = new RemoteServer({
   getScenes: () => listScenes(),
   applyScene: (id) => x32.applyScene(id),
   getStatus: () => ({ connected: x32.connected, info: x32.info }),
+  getCue: () => ({
+    items: cueState.items.map((c) => ({ name: c.name, kind: c.kind })),
+    index: cueState.index,
+  }),
+  gotoCue: (index) => gotoCueMain(index),
+  allMute: () => x32.applyScene('allmute'),
 });
 
 function createWindow() {
@@ -102,6 +127,16 @@ ipcMain.handle('x32:apply-states', async (_e, { states }) => {
   return x32.applyChannelStates(states);
 });
 
+ipcMain.handle('x32:set-fader', async (_e, { ch, fader }) => {
+  x32.setChannelFader(ch, fader);
+  return true;
+});
+
+ipcMain.handle('x32:set-mute', async (_e, { ch, on }) => {
+  x32.setChannelMute(ch, on);
+  return true;
+});
+
 ipcMain.handle('x32:auto-suppress', async (_e, { enabled, options }) => {
   return x32.setAutoSuppress(enabled, options);
 });
@@ -127,6 +162,11 @@ ipcMain.handle('remote:status', async () => ({
   running: remote.running,
   info: remote.running ? remote.info() : null,
 }));
+
+ipcMain.handle('remote:set-cue', async (_e, { items, index }) => {
+  cueState = { items: Array.isArray(items) ? items : [], index: typeof index === 'number' ? index : -1 };
+  return true;
+});
 
 ipcMain.handle('x32:service-start', async () => x32.applyServiceStart());
 
