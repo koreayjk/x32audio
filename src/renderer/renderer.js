@@ -53,6 +53,7 @@ function setConnected(info) {
   if (autoSuppress) autoSuppress.disabled = false;
   if (saveStateBtn) saveStateBtn.disabled = false;
   if (liveSync) liveSync.disabled = false;
+  setServiceEnabled(true);
   updateCueButtons();
   updateUndo();
   applyI18n();
@@ -80,6 +81,7 @@ function setDisconnected() {
   if (saveStateBtn) saveStateBtn.disabled = true;
   if (suppressInfo) { suppressInfo.textContent = ''; suppressInfo.classList.remove('active'); }
   if (liveSync) { liveSync.checked = false; liveSync.disabled = true; }
+  setServiceEnabled(false);
   updateCueButtons();
   updateUndo();
   applyI18n();
@@ -613,6 +615,9 @@ const I18N = {
     connect: '연결', disconnect: '연결 해제', readState: '상태 읽기',
     startDetect: '감지 시작', stopDetect: '감지 중지', cuePrev: '◀ 이전', cueNext: '▶ 다음 (Space)',
     cueReset: '처음으로', saveState: '💾 현재 상태 저장', connected: '연결됨', notConnected: '연결 안 됨',
+    serviceOps: '예배 운영 · 3개 출력', serviceStart: '예배 시작', outMain: '본당 스피커',
+    outBroadcast: '유튜브/방송', outMonitor: '찬양팀 모니터',
+    sermonMode: '설교 모드(방송 악기 ↓)', loudnessMode: '방송 자동 레벨 (LUFS −14)',
   },
   en: {
     undo: 'Undo', backup: 'Backup', restore: 'Restore', remote: 'Remote', simple: 'Simple mode',
@@ -623,6 +628,9 @@ const I18N = {
     connect: 'Connect', disconnect: 'Disconnect', readState: 'Read state',
     startDetect: 'Start', stopDetect: 'Stop', cuePrev: '◀ Prev', cueNext: '▶ Next (Space)',
     cueReset: 'Reset', saveState: '💾 Save current', connected: 'Connected', notConnected: 'Not connected',
+    serviceOps: 'Service · 3 Outputs', serviceStart: 'Start Service', outMain: 'Main speakers',
+    outBroadcast: 'YouTube/Stream', outMonitor: 'Worship monitor',
+    sermonMode: 'Sermon mode (duck inst.)', loudnessMode: 'Auto level (LUFS −14)',
   },
 };
 let lang = (() => { try { return localStorage.getItem('x32_lang') || 'ko'; } catch (_) { return 'ko'; } })();
@@ -826,6 +834,78 @@ async function renderRemote() {
     } catch (err) { showToast('원격 서버 오류: ' + errMsg(err), 'err'); }
     renderRemote();
   });
+}
+
+// ==== 예배 운영 · 3개 출력 ====
+const serviceStartBtn = $('serviceStartBtn');
+const sermonMode = $('sermonMode');
+const loudnessMode = $('loudnessMode');
+const lufsVal = $('lufsVal');
+const outMain = $('outMain');
+const outBroadcast = $('outBroadcast');
+const outMonitor = $('outMonitor');
+
+serviceStartBtn.addEventListener('click', async () => {
+  if (!connected) return;
+  if (!confirm('Main LR(본당) · Bus 1(방송) · Bus 2(모니터) 세 출력을 예배 시작 프리셋으로 동시에 설정합니다. 진행할까요?')) return;
+  try {
+    await snapshotForUndo();
+    const n = await api.serviceStart();
+    [outMain, outBroadcast, outMonitor].forEach((e) => e.classList.add('active'));
+    showToast(`예배 시작: 3개 출력 적용 (${n}개 명령 전송)`, 'ok');
+    setTimeout(loadChannels, 300);
+  } catch (err) { showToast('적용 실패: ' + errMsg(err), 'err'); }
+});
+
+sermonMode.addEventListener('change', async () => {
+  try {
+    await api.sermonDuck(sermonMode.checked);
+    showToast(sermonMode.checked
+      ? '🎤 설교 모드: 방송 버스의 악기 레벨을 낮췄습니다.'
+      : '설교 모드 해제: 방송 악기 레벨을 복원했습니다.', 'ok');
+  } catch (err) {
+    showToast(errMsg(err), 'err');
+    sermonMode.checked = !sermonMode.checked;
+  }
+});
+
+loudnessMode.addEventListener('change', async () => {
+  try {
+    if (loudnessMode.checked) {
+      await api.loudnessStart({ target: -14 });
+      outBroadcast.classList.add('active');
+      showToast('📊 방송 자동 레벨 시작 (목표 −14 LUFS)', 'ok');
+    } else {
+      await api.loudnessStop();
+      lufsVal.textContent = '—';
+      lufsVal.parentElement.classList.remove('on-target');
+      showToast('방송 자동 레벨 중지');
+    }
+  } catch (err) {
+    showToast(errMsg(err), 'err');
+    loudnessMode.checked = !loudnessMode.checked;
+  }
+});
+
+api.on('loudness', (e) => {
+  if (!e || typeof e.lufs !== 'number') return;
+  lufsVal.textContent = e.lufs.toFixed(1);
+  const onTarget = Math.abs(e.lufs - (e.target || -14)) <= 1.5;
+  lufsVal.parentElement.classList.toggle('on-target', onTarget);
+});
+api.on('sermon-duck', (r) => { if (r) sermonMode.checked = !!r.on; });
+
+function setServiceEnabled(on) {
+  serviceStartBtn.disabled = !on;
+  sermonMode.disabled = !on;
+  loudnessMode.disabled = !on;
+  if (!on) {
+    sermonMode.checked = false;
+    loudnessMode.checked = false;
+    lufsVal.textContent = '—';
+    lufsVal.parentElement.classList.remove('on-target');
+    [outMain, outBroadcast, outMonitor].forEach((e) => e.classList.remove('active'));
+  }
 }
 
 // ---- 사용 가이드 투어 ----

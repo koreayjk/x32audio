@@ -4,11 +4,17 @@ const { EventEmitter } = require('events');
 const { OscBus } = require('./osc-bus');
 const { FeedbackDetector } = require('./feedback');
 const { FeedbackSuppressor } = require('./suppressor');
+const { LoudnessController } = require('./loudness');
 const { buildSceneActions, DEFAULT_CHANNEL_MAP } = require('./scenes');
+const {
+  DEFAULT_OUTPUTS, buildServiceStartActions, buildSermonBroadcastDuck,
+} = require('./outputs');
 const util = require('./x32-util');
 
 const KEEPALIVE_MS = 8000;       // /xremote, 미터 재구독 주기 (X32 구독은 10초 후 만료)
 const DEFAULT_METER_BANK = '/meters/15'; // RTA (피드백 감지에 사용)
+const LOUDNESS_BANK = '/meters/5';       // 믹스 버스 미터 (방송 LUFS 측정에 사용)
+const LOUDNESS_FRAMES_PER_TICK = 40;     // 약 2초마다 보정 (미터 ~50ms 가정)
 
 /**
  * X32 미터/RTA 블롭 파싱.
@@ -51,8 +57,14 @@ class X32Manager extends EventEmitter {
     this.port = 10023;
     this.channelMap = DEFAULT_CHANNEL_MAP;
     this.meterBank = DEFAULT_METER_BANK;
+    this.outputs = { ...DEFAULT_OUTPUTS };
+    this.sermonDucked = false;
+    this.loudness = new LoudnessController();
+    this._loudActive = false;
+    this._loudMasterDb = 0;
+    this._loudFrames = 0;
     this._keepAlive = null;
-    this._metering = false;
+    this._meterHandlers = new Map(); // bankPath -> (values:number[]) => void
 
     this.bus.on('message', (address, args) => this._onMessage(address, args));
     this.bus.on('error', (err) => this.emit('error', err));
@@ -100,6 +112,8 @@ class X32Manager extends EventEmitter {
   disconnect() {
     this._stopKeepAlive();
     this.stopFeedback();
+    this.stopBroadcastLoudness();
+    this.sermonDucked = false;
     this.autoSuppress = false;
     this.suppressor.reset();
     if (this.bus.isOpen) this.bus.close();
@@ -115,7 +129,7 @@ class X32Manager extends EventEmitter {
       if (!this.bus.isOpen) return;
       try {
         this.bus.send('/xremote');           // 파라미터 변경 푸시 유지
-        if (this._metering) this._subscribeMeters();
+        if (this._meterHandlers.size > 0) this._subscribeMeters();
       } catch (_) { /* ignore */ }
     };
     tick();
@@ -198,42 +212,55 @@ class X32Manager extends EventEmitter {
     return result;
   }
 
-  // ---- 피드백 감지 ----
+  // ---- 미터 구독 (다중 뱅크) ----
 
-  startFeedback(options) {
-    if (options) this.detector.setOptions(options);
-    this.detector.reset();
-    this._metering = true;
+  _addMeterBank(bank, handler) {
+    this._meterHandlers.set(bank, handler);
     this._subscribeMeters();
   }
 
-  stopFeedback() {
-    this._metering = false;
-    this.detector.reset();
+  _removeMeterBank(bank) {
+    this._meterHandlers.delete(bank);
   }
 
   _subscribeMeters() {
     if (!this.bus.isOpen) return;
     // /subscribe ,si "<bank>" <timefactor>  → X32 가 주기적으로 블롭 전송 (10초 후 만료)
-    this.bus.send('/subscribe', [util.s(this.meterBank), util.i(1)]);
+    for (const bank of this._meterHandlers.keys()) {
+      this.bus.send('/subscribe', [util.s(bank), util.i(1)]);
+    }
   }
 
   _onMessage(address, args) {
-    // 미터/RTA 블롭
-    if (this._metering && address.indexOf('meters') !== -1) {
+    // 미터 블롭 → 해당 뱅크 핸들러로 라우팅
+    const handler = this._meterHandlers.get(address);
+    if (handler) {
       const blob = args[0];
       if (Buffer.isBuffer(blob)) {
         const raw = parseMeterBlob(blob);
-        if (raw.length) {
-          const spectrum = normalizeSpectrum(raw);
-          this.detector.push(spectrum);
-          this.emit('meters', spectrum);
-        }
+        if (raw.length) handler(raw);
       }
       return;
     }
     // 그 외 파라미터 푸시 (xremote)
     this.emit('param', address, args);
+  }
+
+  // ---- 피드백 감지 ----
+
+  startFeedback(options) {
+    if (options) this.detector.setOptions(options);
+    this.detector.reset();
+    this._addMeterBank(this.meterBank, (raw) => {
+      const spectrum = normalizeSpectrum(raw);
+      this.detector.push(spectrum);
+      this.emit('meters', spectrum);
+    });
+  }
+
+  stopFeedback() {
+    this._removeMeterBank(this.meterBank);
+    this.detector.reset();
   }
 
   // ---- Scene 적용 ----
@@ -250,6 +277,72 @@ class X32Manager extends EventEmitter {
     }
     this.emit('scene-applied', { sceneId, count: actions.length });
     return actions.length;
+  }
+
+  // ---- 3개 출력 관리 (Main LR / 방송 Bus / 모니터 Bus) ----
+
+  /** 예배 시작: 세 출력을 한 번에 세팅. */
+  applyServiceStart() {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    const actions = buildServiceStartActions(this.channelMap, this.outputs);
+    for (const a of actions) this.bus.send(a.address, a.args);
+    this.sermonDucked = false;
+    this.emit('service-started', { count: actions.length, outputs: this.outputs });
+    return actions.length;
+  }
+
+  /** 설교 모드: 방송 버스에서 악기/반주 레벨을 자동으로 낮추거나 복원. */
+  setSermonBroadcastDuck(on, duckDb) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    const actions = buildSermonBroadcastDuck(this.channelMap, this.outputs, !!on, duckDb);
+    for (const a of actions) this.bus.send(a.address, a.args);
+    this.sermonDucked = !!on;
+    this.emit('sermon-duck', { on: this.sermonDucked, count: actions.length });
+    return actions.length;
+  }
+
+  /** 방송 버스 LUFS 자동 레벨 시작 (기본 목표 -14 LUFS). */
+  async startBroadcastLoudness(opts = {}) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    this.loudness.setTarget(opts.target ?? -14);
+    if (opts.calibrationDb != null) this.loudness.calibrationDb = opts.calibrationDb;
+    this.loudness.reset();
+    this._loudFramesPerTick = opts.framesPerTick ?? LOUDNESS_FRAMES_PER_TICK;
+    this._loudFrames = 0;
+
+    // 현재 방송 버스 마스터 dB 로 초기화
+    const faderAddr = `/bus/${util.chId(this.outputs.broadcastBus)}/mix/fader`;
+    try {
+      const a = await this.bus.query(faderAddr);
+      this._loudMasterDb = typeof a[0] === 'number' ? util.faderToDb(a[0]) : 0;
+    } catch (_) { this._loudMasterDb = 0; }
+
+    this._loudActive = true;
+    this._addMeterBank(LOUDNESS_BANK, (raw) => {
+      const idx = this.outputs.broadcastBus - 1;
+      const lvl = raw[idx] != null ? raw[idx] : 0;
+      this.loudness.pushLevel(lvl < 0 ? Math.pow(10, lvl / 20) : lvl);
+      if (++this._loudFrames >= this._loudFramesPerTick) {
+        this._loudFrames = 0;
+        const r = this.loudness.tick(this._loudMasterDb);
+        if (r) {
+          if (r.deltaDb !== 0) {
+            this._loudMasterDb = r.newMasterDb;
+            this.bus.send(faderAddr, [util.f(util.dbToFader(r.newMasterDb))]);
+          }
+          this.emit('loudness', {
+            lufs: r.measuredLufs, masterDb: this._loudMasterDb, target: this.loudness.target,
+          });
+        }
+      }
+    });
+    return true;
+  }
+
+  stopBroadcastLoudness() {
+    this._loudActive = false;
+    this._removeMeterBank(LOUDNESS_BANK);
+    this.loudness.reset();
   }
 
   // ---- 사용자 정의 Scene (채널 on/fader 상태) ----

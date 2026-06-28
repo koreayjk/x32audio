@@ -50,6 +50,9 @@ x32.on('meters', (spectrum) => send('x32:meters', spectrum));
 x32.on('scene-applied', (r) => send('x32:scene-applied', r));
 x32.on('suppress-info', (info) => send('x32:suppress-info', info));
 x32.on('param', (address, args) => send('x32:param', { address, args }));
+x32.on('service-started', (r) => send('x32:service-started', r));
+x32.on('sermon-duck', (r) => send('x32:sermon-duck', r));
+x32.on('loudness', (r) => send('x32:loudness', r));
 
 // ---- IPC 핸들러 ----
 ipcMain.handle('x32:connect', async (_e, { host, port }) => {
@@ -119,6 +122,21 @@ ipcMain.handle('remote:status', async () => ({
   running: remote.running,
   info: remote.running ? remote.info() : null,
 }));
+
+ipcMain.handle('x32:service-start', async () => x32.applyServiceStart());
+
+ipcMain.handle('x32:sermon-duck', async (_e, { on, duckDb }) => {
+  return x32.setSermonBroadcastDuck(on, duckDb);
+});
+
+ipcMain.handle('x32:loudness-start', async (_e, options) => {
+  return x32.startBroadcastLoudness(options || {});
+});
+
+ipcMain.handle('x32:loudness-stop', async () => {
+  x32.stopBroadcastLoudness();
+  return true;
+});
 
 ipcMain.handle('x32:status', async () => ({
   connected: x32.connected,

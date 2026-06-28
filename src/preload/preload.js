@@ -24,6 +24,10 @@ contextBridge.exposeInMainWorld('x32api', {
   remoteStart: (port) => ipcRenderer.invoke('remote:start', { port }),
   remoteStop: () => ipcRenderer.invoke('remote:stop'),
   remoteStatus: () => ipcRenderer.invoke('remote:status'),
+  serviceStart: () => ipcRenderer.invoke('x32:service-start'),
+  sermonDuck: (on, duckDb) => ipcRenderer.invoke('x32:sermon-duck', { on, duckDb }),
+  loudnessStart: (options) => ipcRenderer.invoke('x32:loudness-start', options),
+  loudnessStop: () => ipcRenderer.invoke('x32:loudness-stop'),
   getStatus: () => ipcRenderer.invoke('x32:status'),
 
   // 이벤트 구독 (main → renderer)

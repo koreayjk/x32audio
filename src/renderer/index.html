@@ -61,6 +61,37 @@
   <main class="grid">
     <!-- 좌측 컬럼 -->
     <div class="main-col">
+      <!-- 예배 운영 · 3개 출력 -->
+      <section class="card service">
+        <div class="card-head">
+          <h2 data-i18n="serviceOps">예배 운영 · 3개 출력</h2>
+          <button id="serviceStartBtn" class="btn primary" disabled>▶ <span data-i18n="serviceStart">예배 시작</span></button>
+        </div>
+        <div class="outputs">
+          <div class="out-card" id="outMain">
+            <div class="out-top"><span class="out-ic">🔊</span><b>Main LR</b></div>
+            <div class="out-sub" data-i18n="outMain">본당 스피커</div>
+          </div>
+          <div class="out-card" id="outBroadcast">
+            <div class="out-top"><span class="out-ic">📺</span><b>Bus 1</b></div>
+            <div class="out-sub" data-i18n="outBroadcast">유튜브/방송</div>
+            <div class="out-lufs"><span id="lufsVal">—</span> LUFS</div>
+          </div>
+          <div class="out-card" id="outMonitor">
+            <div class="out-top"><span class="out-ic">🎧</span><b>Bus 2</b></div>
+            <div class="out-sub" data-i18n="outMonitor">찬양팀 모니터</div>
+          </div>
+        </div>
+        <div class="service-ctl">
+          <label class="inline switch" title="설교 시 방송 버스에서 악기 레벨을 자동으로 낮춤">
+            <input type="checkbox" id="sermonMode" disabled /> 🎤 <span data-i18n="sermonMode">설교 모드(방송 악기 ↓)</span>
+          </label>
+          <label class="inline switch" title="방송 버스를 LUFS -14 기준으로 자동 레벨">
+            <input type="checkbox" id="loudnessMode" disabled /> 📊 <span data-i18n="loudnessMode">방송 자동 레벨 (LUFS −14)</span>
+          </label>
+        </div>
+      </section>
+
       <!-- 채널 상태 -->
       <section class="card channels">
         <div class="card-head">

@@ -191,6 +191,26 @@ td.empty, .empty td { color: var(--muted); text-align: center; padding: 28px 12p
 
 .main-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
+/* ---- 예배 운영 · 3개 출력 ---- */
+.outputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 16px; }
+.out-card {
+  background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+  transition: border-color .2s, background .2s;
+}
+.out-card.active { border-color: var(--green); background: rgba(62,207,142,.08); }
+.out-top { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.out-ic { font-size: 18px; }
+.out-sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.out-lufs {
+  margin-top: 8px; font-size: 13px; font-variant-numeric: tabular-nums;
+  color: var(--amber); font-weight: 700;
+}
+.out-lufs.on-target { color: var(--green); }
+.service-ctl {
+  display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+  padding: 0 16px 14px; border-top: 1px solid var(--line); padding-top: 12px;
+}
+
 /* ---- 도구 모음 ---- */
 .toolbar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
