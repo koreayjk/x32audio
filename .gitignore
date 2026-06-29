@@ -16,3 +16,7 @@ Thumbs.db
 
 # app data / user config (created at runtime)
 config.json
+
+# 원본 사진 폴더(배경 원본) — 커밋/푸시 제외.
+# 실제 배경으로 쓰는 가공본은 src/renderer/assets/bg/ 에 커밋됩니다.
+pic/
