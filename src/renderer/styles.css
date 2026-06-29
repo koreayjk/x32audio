@@ -514,151 +514,38 @@ body.simple .feedback { display: none; }
 .hidden { display: none !important; }
 
 /* ===================================================================
-   배경 사진 레이어 (assets/bg/*.jpg)
-   - 모든 사진은 ::before 가상요소 + z-index:-1 로 깔고, 그 위에 어두운
-     그라데이션을 덧대 글자 가독성을 확보합니다.
-   - 부모에 position:relative + overflow:hidden 만 주면 본문은 사진 위로
-     자연스럽게 올라옵니다.
+   배경 사진 — 화면 "전체 배경"에만 사용 (박스/카드 안에는 넣지 않음)
+   화면 3개: 대시보드 · 믹서 선택 · 아날로그 가이드
    =================================================================== */
 
-/* 공통 사진 헬퍼 */
-.bgphoto { position: relative; overflow: hidden; }
-.bgphoto::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background-size: cover; background-position: center;
-  background-repeat: no-repeat;
-}
-
-/* ---- 1) 전체 앱 배경 (대시보드 뒤) ---- */
+/* 1) 대시보드 전체 배경 */
 body::before {
   content: ""; position: fixed; inset: 0; z-index: -1;
   background: url("assets/bg/bg-body.jpg") center/cover no-repeat;
-  filter: brightness(.30) saturate(1.15) blur(2px);
+  filter: brightness(.34) saturate(1.1) blur(1px);
   transform: scale(1.04);            /* blur 가장자리 빈틈 방지 */
   pointer-events: none;
 }
-/* 카드를 반투명 글래스로 — 뒤 배경 사진이 은은하게 비침 */
+/* 카드는 살짝 반투명 — 전체 배경이 비쳐 하나의 배경처럼 보이게.
+   (카드마다 다른 사진을 넣는 게 아니라, 뒤의 단일 배경이 비치는 것) */
 .card {
-  background:
-    linear-gradient(180deg, rgba(34,41,66,.40), rgba(20,24,34,.30) 120px),
-    rgba(22,27,39,.78);
-  backdrop-filter: blur(13px) saturate(1.05);
-  -webkit-backdrop-filter: blur(13px) saturate(1.05);
+  background: linear-gradient(180deg, rgba(26,31,45,.82), rgba(22,27,39,.82));
+  backdrop-filter: blur(11px) saturate(1.04);
+  -webkit-backdrop-filter: blur(11px) saturate(1.04);
 }
 
-/* ---- 2) 상단 바 / 도구 모음 ---- */
-.topbar { position: relative; overflow: hidden; isolation: isolate; }
-.topbar::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background:
-    linear-gradient(100deg, rgba(14,16,22,.92) 30%, rgba(20,26,40,.62)),
-    url("assets/bg/bg-topbar.jpg") center/cover no-repeat;
-}
-.toolbar { position: relative; overflow: hidden; isolation: isolate; }
-.toolbar::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background:
-    linear-gradient(180deg, rgba(14,17,24,.86), rgba(14,17,24,.90)),
-    url("assets/bg/bg-toolbar.jpg") center/cover no-repeat;
-}
-
-/* ---- 3) 각 카드 헤더에 테마 사진 ---- */
-.card-head { position: relative; overflow: hidden; isolation: isolate; }
-.card-head::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background-size: cover; background-position: center;
-}
-.service  .card-head::before {
-  background-image: linear-gradient(100deg, rgba(18,22,32,.86), rgba(18,22,32,.55)), url("assets/bg/bg-service.jpg"); }
-.channels .card-head::before {
-  background-image: linear-gradient(100deg, rgba(18,22,32,.86), rgba(18,22,32,.55)), url("assets/bg/bg-channels.jpg"); }
-.cue      .card-head::before {
-  background-image: linear-gradient(100deg, rgba(18,22,32,.86), rgba(18,22,32,.55)), url("assets/bg/bg-cue.jpg"); }
-.feedback .card-head::before {
-  background-image: linear-gradient(100deg, rgba(18,22,32,.86), rgba(18,22,32,.55)), url("assets/bg/bg-feedback.jpg"); }
-.scenes   .card-head::before {
-  background-image: linear-gradient(100deg, rgba(18,22,32,.86), rgba(18,22,32,.55)), url("assets/bg/bg-scenes.jpg"); }
-
-/* ---- 4) 예배 출력 3카드 ---- */
-.out-card { position: relative; overflow: hidden; isolation: isolate; }
-.out-card::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background-size: cover; background-position: center; opacity: .9;
-}
-#outMain::before {
-  background-image: linear-gradient(180deg, rgba(16,20,30,.62), rgba(16,20,30,.84)), url("assets/bg/bg-out-main.jpg"); }
-#outBroadcast::before {
-  background-image: linear-gradient(180deg, rgba(16,20,30,.62), rgba(16,20,30,.84)), url("assets/bg/bg-out-broadcast.jpg"); }
-#outMonitor::before {
-  background-image: linear-gradient(180deg, rgba(16,20,30,.62), rgba(16,20,30,.84)), url("assets/bg/bg-out-monitor.jpg"); }
-/* 활성 상태는 초록 틴트로 위에 덧입힘 */
-.out-card.active::before {
-  background-blend-mode: normal;
-  box-shadow: inset 0 0 0 9999px rgba(56,211,154,.20);
-}
-
-/* ---- 5) 믹서 선택 풀스크린 ---- */
+/* 2) 믹서 선택 화면 전체 배경 */
 #mixerSelect.fullscreen::before {
   content: ""; position: fixed; inset: 0; z-index: -1;
   background:
-    linear-gradient(180deg, rgba(12,15,22,.82), rgba(12,15,22,.90)),
+    linear-gradient(180deg, rgba(12,15,22,.80), rgba(12,15,22,.90)),
     url("assets/bg/bg-mixer-select.jpg") center/cover no-repeat;
 }
-.ms-opt { overflow: hidden; position: relative; isolation: isolate; }
-#msAnalog::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background:
-    linear-gradient(135deg, rgba(20,24,34,.84), rgba(20,24,34,.66)),
-    url("assets/bg/bg-ms-analog.jpg") center/cover no-repeat;
-}
-#msDigital .ms-opt { position: relative; overflow: hidden; isolation: isolate; }
-#msDigital .ms-opt::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background:
-    linear-gradient(135deg, rgba(20,24,34,.84), rgba(20,24,34,.66)),
-    url("assets/bg/bg-ms-digital.jpg") center/cover no-repeat;
-}
 
-/* ---- 6) 아날로그 가이드 풀스크린 ---- */
+/* 3) 아날로그 가이드 화면 전체 배경 */
 #analogGuide.fullscreen::before {
   content: ""; position: fixed; inset: 0; z-index: -1;
   background:
-    linear-gradient(180deg, rgba(12,15,22,.86), rgba(12,15,22,.92)),
+    linear-gradient(180deg, rgba(12,15,22,.84), rgba(12,15,22,.92)),
     url("assets/bg/bg-analog.jpg") center/cover no-repeat;
-}
-.ag-bar { position: relative; overflow: hidden; isolation: isolate; }
-.ag-bar::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background:
-    linear-gradient(100deg, rgba(14,17,24,.90), rgba(20,26,40,.66)),
-    url("assets/bg/bg-ag-bar.jpg") center/cover no-repeat;
-}
-.ag-source { position: relative; overflow: hidden; isolation: isolate; }
-.ag-source::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background:
-    linear-gradient(160deg, rgba(18,22,32,.88), rgba(18,22,32,.80)),
-    url("assets/bg/bg-ag-source.jpg") center/cover no-repeat;
-}
-
-/* ---- 7) 모달 ---- */
-.modal-box { position: relative; isolation: isolate; }
-.modal-box::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background:
-    linear-gradient(180deg, rgba(18,22,32,.93), rgba(18,22,32,.97)),
-    url("assets/bg/bg-modal.jpg") center/cover no-repeat;
-}
-.modal-head { position: relative; overflow: hidden; isolation: isolate; }
-#eqModal .modal-head::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background:
-    linear-gradient(100deg, rgba(16,20,30,.84), rgba(16,20,30,.58)),
-    url("assets/bg/bg-eq.jpg") center/cover no-repeat;
-}
-#remoteModal .modal-head::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background:
-    linear-gradient(100deg, rgba(16,20,30,.84), rgba(16,20,30,.58)),
-    url("assets/bg/bg-remote.jpg") center/cover no-repeat;
 }
