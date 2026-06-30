@@ -181,10 +181,74 @@ function buildSceneActions(sceneId, channelMap = DEFAULT_CHANNEL_MAP) {
   return actions;
 }
 
+/**
+ * 채널 이름으로 역할을 자동 추론하기 위한 키워드.
+ * (확인 순서: playback → inst → vocal → speech)
+ */
+const ROLE_KEYWORDS = {
+  playback: ['반주', 'mr', '엠알', '노트북', '컴퓨터', '피씨', '트랙', '음원', 'bgm', 'media',
+    'playback', 'track', 'laptop', 'pc', 'computer', 'usb', '인이어'],
+  inst: ['기타', '일렉', '어쿠스틱', '베이스', '키보드', '건반', '신디', '피아노', '드럼', '드름',
+    '퍼커션', '콩가', '카혼', '색소폰', '색폰', '트럼펫', '바이올린', '첼로', '플룻',
+    'guitar', 'bass', 'keyboard', 'keys', 'synth', 'piano', 'drum', 'perc', 'cajon',
+    'sax', 'trumpet', 'violin', 'cello', 'flute'],
+  vocal: ['찬양', '보컬', '싱어', '솔로', '인도자', '인도', '경배', '워십', '코러스', '화음',
+    'vocal', 'sing', 'singer', 'lead', 'choir', 'worship', 'praise'],
+  speech: ['설교', '목사', '담임', '강도', '말씀', '사회', '진행', '보조', '핸드', '무선', '강대',
+    '기도', '대표', '강사', 'mc', '엠씨', 'pastor', 'speech', 'talk', 'host', 'wireless',
+    'hand', 'preach'],
+};
+
+/**
+ * 채널 이름 한 개로 역할을 추론한다.
+ * @returns {'speech'|'vocal'|'inst'|'playback'|null} 이름이 없으면 null
+ */
+function detectRole(name) {
+  if (!name) return null;
+  const n = String(name).toLowerCase().trim();
+  if (!n) return null;
+  for (const role of ['playback', 'inst', 'vocal', 'speech']) {
+    if (ROLE_KEYWORDS[role].some((k) => n.includes(k))) return role;
+  }
+  return null; // 키워드로 못 알아보면 추측하지 않음 (기본 맵을 유지하도록)
+}
+
+/**
+ * 믹서에서 읽은 채널 이름 중 "역할을 알아본" 것만 추린다.
+ * @param {Array<{ch:number,name:string}>} names
+ * @returns {Array<{ch,name,role}>}
+ */
+function buildChannelMap(names) {
+  return (names || [])
+    .map((x) => (x && x.name ? { ch: x.ch, name: x.name, role: detectRole(x.name) } : null))
+    .filter((x) => x && x.role);
+}
+
+/**
+ * 기본 채널 맵에 믹서에서 읽은 이름을 병합한다.
+ * - 이름으로 역할을 알아본 채널은 그 역할/이름으로 덮어쓴다.
+ * - 못 알아본 채널은 기본 맵의 역할을 그대로 둔다(이름만 갱신).
+ * 이렇게 하면 이름이 친절한 콘솔은 자동 인식되고, 일반적인 이름은 기본값을 따른다.
+ */
+function mergeChannelMap(defaultMap, names) {
+  const byCh = new Map();
+  for (const e of defaultMap) byCh.set(e.ch, { ...e });
+  for (const item of names || []) {
+    if (!item || !item.name || !String(item.name).trim()) continue;
+    const role = detectRole(item.name);
+    if (role) byCh.set(item.ch, { ch: item.ch, name: item.name, role });
+    else if (byCh.has(item.ch)) byCh.get(item.ch).name = item.name;
+  }
+  return [...byCh.values()].sort((a, b) => a.ch - b.ch);
+}
+
 module.exports = {
   DEFAULT_CHANNEL_MAP,
   SCENES,
   listScenes,
   buildSceneActions,
   hpfHzToFloat,
+  detectRole,
+  buildChannelMap,
+  mergeChannelMap,
 };

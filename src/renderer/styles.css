@@ -172,6 +172,11 @@ td.lvl .fader:disabled { opacity: .4; }
 td.lvl .lvltext { display: inline-block; min-width: 52px; margin-left: 8px; color: var(--text); }
 .mutebtn { cursor: pointer; user-select: none; transition: filter .12s; }
 .mutebtn:hover { filter: brightness(1.25); }
+.role-tag { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 10px; vertical-align: middle; }
+.role-speech { background: rgba(255,180,84,.18); color: var(--amber); }
+.role-vocal { background: rgba(91,140,255,.18); color: #9fb6ff; }
+.role-inst { background: rgba(138,107,255,.2); color: #c0adff; }
+.role-playback { background: rgba(56,211,154,.16); color: var(--green); }
 .pill { padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 700; letter-spacing: .2px; }
 .pill.on { background: rgba(56,211,154,.16); color: var(--green); box-shadow: inset 0 0 0 1px rgba(56,211,154,.25); }
 .pill.off { background: rgba(255,93,108,.16); color: var(--red); box-shadow: inset 0 0 0 1px rgba(255,93,108,.25); }

@@ -2,6 +2,9 @@
 
 const api = window.x32api;
 
+// 자동 인식된 역할 → 한글 라벨
+const ROLE_KO = { speech: '설교', vocal: '찬양', inst: '악기', playback: '반주' };
+
 // ---- DOM ----
 const $ = (id) => document.getElementById(id);
 const ipInput = $('ip');
@@ -153,9 +156,10 @@ function renderChannels(channels) {
   for (const c of channels) {
     const row = document.createElement('tr');
     const faderVal = c.fader == null ? 0 : c.fader;
+    const roleTag = c.role ? ` <span class="role-tag role-${c.role}">${ROLE_KO[c.role] || ''}</span>` : '';
     row.innerHTML =
       `<td>${String(c.ch).padStart(2, '0')}</td>` +
-      `<td>${esc(c.name)}</td>` +
+      `<td>${esc(c.name)}${roleTag}</td>` +
       `<td class="lvl"><input class="fader" type="range" min="0" max="1" step="0.001" value="${faderVal}"${c.fader == null ? ' disabled' : ''} /><span class="lvltext">${esc(c.dbText)} dB</span></td>` +
       `<td><span class="pill ${c.on ? 'on' : 'off'} mutebtn" role="button" title="클릭하여 음소거 전환">${c.on ? 'ON' : 'MUTE'}</span></td>` +
       `<td><span class="pill ${c.eqOn ? 'eq-on' : 'eq-off'}">${c.eqOn ? 'EQ' : 'OFF'}</span></td>` +
@@ -354,6 +358,12 @@ api.on('error', (msg) => showToast('오류: ' + msg, 'err'));
 api.on('meters', (spectrum) => renderSpectrum(spectrum));
 api.on('feedback', (alert) => addAlert(alert));
 api.on('feedback-clear', (info) => clearAlert(info));
+api.on('channelmap', (map) => {
+  if (Array.isArray(map) && map.length) {
+    showToast(`채널 이름으로 역할 자동 인식 (${map.length}개)`, 'ok');
+    if (connected && chRows.size) loadChannels(); // 표가 떠있으면 역할 표시 갱신
+  }
+});
 
 // ==== 자동 억제 · 사용자 정의 Scene · 예배 순서 큐 ====
 const autoSuppress = $('autoSuppress');

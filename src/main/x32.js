@@ -6,7 +6,9 @@ const { OscBus } = require('./osc-bus');
 const { FeedbackDetector } = require('./feedback');
 const { FeedbackSuppressor } = require('./suppressor');
 const { LoudnessController } = require('./loudness');
-const { buildSceneActions, DEFAULT_CHANNEL_MAP } = require('./scenes');
+const {
+  buildSceneActions, buildChannelMap, mergeChannelMap, DEFAULT_CHANNEL_MAP,
+} = require('./scenes');
 const {
   DEFAULT_OUTPUTS, buildServiceStartActions, buildSermonBroadcastDuck,
 } = require('./outputs');
@@ -131,7 +133,37 @@ class X32Manager extends MixerAdapter {
     this.connected = true;
     this._startKeepAlive();
     this.emit('connected', info);
+
+    // 채널 이름을 읽어 역할 자동 인식 (Scene 이 우리 콘솔 배치에 맞게 동작하도록)
+    this.autoDetectChannelMap().catch(() => {});
     return info;
+  }
+
+  /**
+   * 믹서의 채널 이름을 읽어 역할을 자동 분류하고 channelMap 을 갱신한다.
+   * 이름이 하나도 없으면 기본 맵을 유지한다.
+   * @returns {Promise<Array<{ch,name,role}>>}
+   */
+  async autoDetectChannelMap(count) {
+    const total = count || this.profile.channelCount || 32;
+    const names = [];
+    const CONCURRENCY = 8;
+    for (let start = 1; start <= total; start += CONCURRENCY) {
+      const batch = [];
+      for (let ch = start; ch < start + CONCURRENCY && ch <= total; ch++) {
+        batch.push(
+          this.bus.query(`/ch/${util.chId(ch)}/config/name`)
+            .then((a) => ({ ch, name: a[0] }))
+            .catch(() => ({ ch, name: null })),
+        );
+      }
+      names.push(...(await Promise.all(batch)));
+    }
+    const recognized = buildChannelMap(names);     // 이름으로 알아본 채널만
+    const merged = mergeChannelMap(DEFAULT_CHANNEL_MAP, names); // 나머지는 기본값 유지
+    this.channelMap = merged;
+    if (recognized.length) this.emit('channelmap', recognized);
+    return merged;
   }
 
   disconnect() {
@@ -181,10 +213,11 @@ class X32Manager extends MixerAdapter {
       this.bus.query(`${base}/eq/on`).catch(() => [null]),
     ]);
     const fader = typeof faderA[0] === 'number' ? faderA[0] : null;
-    const role = (this.channelMap.find((c) => c.ch === ch) || {}).name;
+    const entry = this.channelMap.find((c) => c.ch === ch) || {};
     return {
       ch,
-      name: nameA[0] || role || `CH ${id}`,
+      name: nameA[0] || entry.name || `CH ${id}`,
+      role: entry.role || null,
       on: onA[0] === 1 || onA[0] === true,
       fader,
       db: fader == null ? null : util.faderToDb(fader),

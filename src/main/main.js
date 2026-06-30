@@ -87,6 +87,7 @@ function wireMixer(m) {
   m.on('service-started', (r) => send('x32:service-started', r));
   m.on('sermon-duck', (r) => send('x32:sermon-duck', r));
   m.on('loudness', (r) => send('x32:loudness', r));
+  m.on('channelmap', (map) => send('x32:channelmap', map));
 }
 wireMixer(x32);
 
