@@ -2,25 +2,28 @@
 # ============================================================
 #  X32 교회 음향 · 맥 첫 실행 문제 해결
 #
-#  앱이 켜자마자 꺼지거나 "손상됨/열 수 없음" 이 뜨면 이 파일을
-#  더블클릭하세요. (터미널 명령 몰라도 됩니다.)
+#  다운로드한 앱이 "손상되었기 때문에 열 수 없습니다" 라고 뜨면
+#  이 파일을 더블클릭하세요. (터미널 명령 몰라도 됩니다.)
 #
-#  하는 일:
-#   1) 격리 표시 제거 (xattr -cr)
-#   2) 앱 + 내부 헬퍼/프레임워크를 JIT 권한 넣어 애드혹 재서명
-#      (Apple Silicon 에서 JavaScript 엔진이 실행되려면 필수)
+#  하는 일: 인터넷 다운로드 격리 표시 제거 (xattr) → 앱 실행.
+#  ※ 앱이 손상된 게 아니라, 서명 안 된 앱을 macOS 가 막는 것뿐입니다.
 # ============================================================
 
-APP="/Applications/X32 교회 음향.app"
+APP="/Applications/X32ChurchAudio.app"
 
 echo ""
 echo "  X32 교회 음향 · 첫 실행 문제 해결"
 echo "  --------------------------------"
 
+# 응용 프로그램에 없으면 같은 폴더나 다운로드에서 찾아본다
 if [ ! -d "$APP" ]; then
-  echo "  ⚠️  앱을 찾지 못했어요:"
-  echo "      $APP"
-  echo ""
+  for CAND in "$(dirname "$0")/X32ChurchAudio.app" "$HOME/Downloads/X32ChurchAudio.app"; do
+    if [ -d "$CAND" ]; then APP="$CAND"; break; fi
+  done
+fi
+
+if [ ! -d "$APP" ]; then
+  echo "  ⚠️  앱을 찾지 못했어요."
   echo "  먼저 dmg 를 열어 앱을 '응용 프로그램(Applications)' 폴더로"
   echo "  드래그해 설치한 뒤, 이 파일을 다시 더블클릭하세요."
   echo ""
@@ -28,38 +31,8 @@ if [ ! -d "$APP" ]; then
   exit 1
 fi
 
-# JIT 권한 파일을 임시로 생성
-ENT="$(mktemp -t x32ent).plist"
-cat > "$ENT" <<'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>com.apple.security.cs.allow-jit</key><true/>
-  <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
-  <key>com.apple.security.cs.disable-library-validation</key><true/>
-  <key>com.apple.security.cs.allow-dyld-environment-variables</key><true/>
-</dict>
-</plist>
-PLIST
-
-sign_one() {
-  codesign --force --sign - --timestamp=none --options runtime --entitlements "$ENT" "$1" 2>/dev/null
-}
-
-echo "  1) 격리 표시 제거 중..."
+echo "  격리 표시 제거 중...  ($APP)"
 xattr -cr "$APP"
-
-echo "  2) 내부 헬퍼/프레임워크 서명 중..."
-# 깊은 경로(내부)부터 서명: dylib/node, .framework, 헬퍼 .app
-find "$APP/Contents/Frameworks" -depth \( -name "*.dylib" -o -name "*.node" -o -name "*.framework" -o -name "*.app" \) 2>/dev/null | while read -r item; do
-  sign_one "$item"
-done
-
-echo "  3) 앱 서명 중..."
-sign_one "$APP"
-
-rm -f "$ENT"
 
 echo ""
 echo "  ✅ 완료! 앱을 실행합니다."
