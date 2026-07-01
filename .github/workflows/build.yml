@@ -1,11 +1,15 @@
 name: 앱 빌드 (Windows / Mac)
 
-# 수동 실행(Actions 탭의 "Run workflow") 또는 v태그 push 시 빌드.
+# 수동 실행(Actions 탭 "Run workflow") 또는 v태그 push 시 빌드.
+# v태그(예: v0.1.0) push 하면 결과물이 GitHub Release 에 자동 첨부됨.
 on:
   workflow_dispatch:
   push:
     tags:
       - 'v*'
+
+permissions:
+  contents: write   # Release 생성/업로드용
 
 jobs:
   windows:
@@ -15,27 +19,43 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: npm install
-      - run: npm run dist:win
-      - name: 설치파일 업로드
+      - name: 빌드
+        run: npx electron-builder --win --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 설치파일 업로드(아티팩트)
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
           path: dist/*.exe
+      - name: Release 에 첨부(태그 push 시)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.exe
 
   mac:
-    name: macOS (.dmg · Intel+Apple Silicon 통합)
+    name: macOS (.dmg · Intel / Apple Silicon)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: npm install
-      - run: npm run dist:mac-universal
-      - name: 설치파일 업로드
+      - name: 빌드 (Intel + Apple Silicon 각각)
+        run: npx electron-builder --mac --arm64 --x64 --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 설치파일 업로드(아티팩트)
         uses: actions/upload-artifact@v4
         with:
-          name: mac-dmg-universal
+          name: mac-dmg
           path: dist/*.dmg
+      - name: Release 에 첨부(태그 push 시)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.dmg
