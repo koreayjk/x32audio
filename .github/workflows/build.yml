@@ -1,7 +1,7 @@
 name: 앱 빌드 (Windows / Mac)
 
-# 수동 실행(Actions 탭 "Run workflow") 또는 v태그 push 시 빌드.
-# v태그(예: v0.1.0) push 하면 결과물이 GitHub Release 에 자동 첨부됨.
+# Actions 탭 "Run workflow" 만 눌러도 빌드 후 Release 가 자동 생성됨.
+# (git 로그인/태그 필요 없음). v태그 push 로도 동작.
 on:
   workflow_dispatch:
   push:
@@ -25,16 +25,10 @@ jobs:
         run: npx electron-builder --win --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: 설치파일 업로드(아티팩트)
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
           path: dist/*.exe
-      - name: Release 에 첨부(태그 push 시)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*.exe
 
   mac:
     name: macOS (.dmg · Intel / Apple Silicon)
@@ -49,13 +43,30 @@ jobs:
         run: npx electron-builder --mac --arm64 --x64 --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: 설치파일 업로드(아티팩트)
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: mac-dmg
           path: dist/*.dmg
-      - name: Release 에 첨부(태그 push 시)
-        if: startsWith(github.ref, 'refs/tags/')
+
+  release:
+    name: Release 만들기 (설치파일 첨부)
+    needs: [windows, mac]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 버전 태그 계산
+        id: ver
+        run: echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: 빌드 결과 내려받기
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Release 생성/갱신
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.dmg
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || steps.ver.outputs.tag }}
+          name: X32 교회 음향 ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || steps.ver.outputs.tag }}
+          body: |
+            Windows·macOS(인텔/Apple Silicon) 설치 파일입니다.
+            처음 실행 시 경고가 뜨면 — Mac: 우클릭→열기 / Windows: 추가 정보→실행.
+          files: artifacts/**/*
