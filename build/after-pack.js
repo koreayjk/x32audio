@@ -21,6 +21,11 @@ exports.default = async function afterPack(context) {
   const appName = context.packager.appInfo.productFilename;
   const appPath = path.join(context.appOutDir, `${appName}.app`);
 
+  // 혹시 붙어 있을 격리 표시 제거 (빌드 머신 기준 방어적)
+  try {
+    execFileSync('xattr', ['-cr', appPath], { stdio: 'inherit' });
+  } catch (_) { /* 없으면 무시 */ }
+
   console.log(`  • ad-hoc 서명 (인증서 없이 실행 가능하게): ${appPath}`);
   try {
     execFileSync('codesign', ['--force', '--deep', '--sign', '-', appPath], { stdio: 'inherit' });

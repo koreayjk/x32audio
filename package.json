@@ -13,7 +13,8 @@
     "test": "node --test",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
-    "dist:mac": "electron-builder --mac"
+    "dist:mac": "electron-builder --mac",
+    "fix:mac": "xattr -cr \"/Applications/X32 교회 음향.app\" && codesign --force --deep --sign - \"/Applications/X32 교회 음향.app\" && open \"/Applications/X32 교회 음향.app\""
   },
   "dependencies": {
     "node-osc": "^11.6.0"
