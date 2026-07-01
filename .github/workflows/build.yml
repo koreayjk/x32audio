@@ -1,0 +1,41 @@
+name: 앱 빌드 (Windows / Mac)
+
+# 수동 실행(Actions 탭의 "Run workflow") 또는 v태그 push 시 빌드.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  windows:
+    name: Windows (.exe)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run dist:win
+      - name: 설치파일 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: dist/*.exe
+
+  mac:
+    name: macOS (.dmg · Intel+Apple Silicon 통합)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run dist:mac-universal
+      - name: 설치파일 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-dmg-universal
+          path: dist/*.dmg

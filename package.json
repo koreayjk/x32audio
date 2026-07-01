@@ -14,6 +14,8 @@
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
+    "dist:mac-intel": "electron-builder --mac --x64",
+    "dist:mac-universal": "electron-builder --mac --universal",
     "fix:mac": "node scripts/mac-sign.js \"/Applications/X32ChurchAudio.app\" && open \"/Applications/X32ChurchAudio.app\""
   },
   "dependencies": {
@@ -41,6 +43,11 @@
         "nsis"
       ]
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "X32 교회 음향"
+    },
     "mac": {
       "target": [
         "dmg"
@@ -49,10 +56,6 @@
       "extendInfo": {
         "CFBundleDisplayName": "X32 교회 음향"
       }
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
     }
   }
 }
