@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('x32api', {
   // 요청/응답 (Promise)
   connect: (host, port) => ipcRenderer.invoke('x32:connect', { host, port }),
   disconnect: () => ipcRenderer.invoke('x32:disconnect'),
+  discover: (opts) => ipcRenderer.invoke('x32:discover', opts),
+  localIPs: () => ipcRenderer.invoke('net:localips'),
   readChannels: (count) => ipcRenderer.invoke('x32:read-channels', { count }),
   readEq: (ch) => ipcRenderer.invoke('x32:read-eq', { ch }),
   getScenes: () => ipcRenderer.invoke('x32:scenes'),

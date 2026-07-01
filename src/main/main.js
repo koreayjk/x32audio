@@ -116,6 +116,20 @@ ipcMain.handle('x32:disconnect', async () => {
   return true;
 });
 
+ipcMain.handle('x32:discover', async (_e, opts) => x32.discover(opts || {}));
+
+ipcMain.handle('net:localips', async () => {
+  const os = require('os');
+  const out = [];
+  const ifs = os.networkInterfaces();
+  for (const name of Object.keys(ifs)) {
+    for (const ni of ifs[name] || []) {
+      if (ni.family === 'IPv4' && !ni.internal) out.push(ni.address);
+    }
+  }
+  return out;
+});
+
 ipcMain.handle('x32:read-channels', async (_e, { count }) => {
   return x32.readChannels(count || 16);
 });

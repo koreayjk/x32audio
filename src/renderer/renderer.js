@@ -679,7 +679,7 @@ const I18N = {
     channels: '채널 상태', live: '실시간', chCount: '채널 수', cue: '예배 순서 큐', feedback: '피드백 감지',
     scenes: 'Scene 템플릿', custom: '사용자 정의 Scene', close: '닫기', micPreset: '인물별 마이크 프리셋',
     savePreset: '이 채널 저장', remoteTitle: '태블릿/폰 원격 조작', ipAddr: 'X32 IP 주소', port: '포트',
-    guide: '사용 가이드', sensitivity: '민감도', autoSuppress: '자동 억제',
+    guide: '사용 가이드', sensitivity: '민감도', autoSuppress: '자동 억제', findMixer: '믹서 찾기',
     connect: '연결', disconnect: '연결 해제', readState: '상태 읽기',
     startDetect: '감지 시작', stopDetect: '감지 중지', cuePrev: '◀ 이전', cueNext: '▶ 다음 (Space)',
     cueReset: '처음으로', saveState: '💾 현재 상태 저장', connected: '연결됨', notConnected: '연결 안 됨',
@@ -693,7 +693,7 @@ const I18N = {
     channels: 'Channels', live: 'Live', chCount: 'Count', cue: 'Service Cue', feedback: 'Feedback',
     scenes: 'Scene Templates', custom: 'Custom Scenes', close: 'Close', micPreset: 'Mic Presets (per person)',
     savePreset: 'Save channel', remoteTitle: 'Tablet/Phone Remote', ipAddr: 'X32 IP', port: 'Port',
-    guide: 'Guide', sensitivity: 'Sensitivity', autoSuppress: 'Auto-suppress',
+    guide: 'Guide', sensitivity: 'Sensitivity', autoSuppress: 'Auto-suppress', findMixer: 'Find mixer',
     connect: 'Connect', disconnect: 'Disconnect', readState: 'Read state',
     startDetect: 'Start', stopDetect: 'Stop', cuePrev: '◀ Prev', cueNext: '▶ Next (Space)',
     cueReset: 'Reset', saveState: '💾 Save current', connected: 'Connected', notConnected: 'Not connected',
@@ -1460,6 +1460,87 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowRight') tourNext.click();
   else if (e.key === 'ArrowLeft') tourPrev.click();
 });
+
+// ---- 연결 도움말 / 믹서 자동 찾기 ----
+const findBtn = $('findBtn');
+const netHelp = $('netHelp');
+const netClose = $('netClose');
+const netRun = $('netRun');
+const netStatus = $('netStatus');
+const netResults = $('netResults');
+const myIP = $('myIP');
+
+function openNetHelp() {
+  netHelp.classList.remove('hidden');
+  // 내 컴퓨터 IP 표시 (앞 3자리 비교용)
+  if (api.localIPs) {
+    api.localIPs().then((ips) => {
+      myIP.textContent = (ips && ips.length) ? ips.join(', ') : '확인 불가';
+    }).catch(() => { myIP.textContent = '확인 불가'; });
+  } else {
+    myIP.textContent = '확인 불가';
+  }
+  // 열자마자 자동 검색
+  runDiscover();
+}
+
+async function runDiscover() {
+  if (!api.discover) { netStatus.textContent = '이 버전에서는 자동 찾기를 지원하지 않습니다.'; return; }
+  netResults.innerHTML = '';
+  netRun.disabled = true;
+  netStatus.textContent = '찾는 중… (약 3초)';
+  try {
+    const port = parseInt(portInput.value, 10) || undefined;
+    const found = await api.discover({ port });
+    renderNetResults(found || []);
+  } catch (err) {
+    netStatus.textContent = '검색 실패: ' + errMsg(err);
+  } finally {
+    netRun.disabled = false;
+  }
+}
+
+function renderNetResults(list) {
+  netResults.innerHTML = '';
+  if (!list.length) {
+    netStatus.textContent = '';
+    const empty = document.createElement('div');
+    empty.className = 'net-empty';
+    empty.innerHTML = '⚠️ 같은 네트워크에서 믹서를 찾지 못했어요.<br>'
+      + '아래 설명대로 <b>맥을 믹서와 같은 공유기</b>에 연결한 뒤 다시 찾아보세요.';
+    netResults.appendChild(empty);
+    return;
+  }
+  netStatus.textContent = list.length + '대 발견';
+  list.forEach((c) => {
+    const row = document.createElement('div');
+    row.className = 'net-hit';
+    const label = [c.model, c.name].filter(Boolean).join(' · ') || '믹서';
+    row.innerHTML = '<div class="nh-info"><b>' + escapeHtml(label) + '</b>'
+      + '<span class="nh-ip">' + escapeHtml(c.ip) + '</span></div>';
+    const use = document.createElement('button');
+    use.className = 'btn primary small';
+    use.textContent = '이 믹서 연결';
+    use.addEventListener('click', async () => {
+      ipInput.value = c.ip;
+      netHelp.classList.add('hidden');
+      connectBtn.click();
+    });
+    row.appendChild(use);
+    netResults.appendChild(row);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (ch) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+  ));
+}
+
+if (findBtn) findBtn.addEventListener('click', openNetHelp);
+if (netClose) netClose.addEventListener('click', () => netHelp.classList.add('hidden'));
+if (netRun) netRun.addEventListener('click', runDiscover);
+if (netHelp) netHelp.addEventListener('click', (e) => { if (e.target === netHelp) netHelp.classList.add('hidden'); });
 
 // ---- 초기화 ----
 (async function init() {

@@ -1,6 +1,7 @@
 'use strict';
 
 const { EventEmitter } = require('events');
+const { Server } = require('node-osc');
 const { MixerAdapter } = require('./mixer-base');
 const { OscBus } = require('./osc-bus');
 const { FeedbackDetector } = require('./feedback');
@@ -164,6 +165,42 @@ class X32Manager extends MixerAdapter {
     this.channelMap = merged;
     if (recognized.length) this.emit('channelmap', recognized);
     return merged;
+  }
+
+  /**
+   * 같은 네트워크(같은 공유기)의 X32/X-Air 를 브로드캐스트로 검색한다.
+   * 응답한 콘솔의 IP·이름·모델 목록을 반환한다. 아무것도 없으면 = 같은 네트워크에 없음.
+   * @param {object} opts { port, timeoutMs, targets(테스트/특정 IP) }
+   * @returns {Promise<Array<{ip,name,model}>>}
+   */
+  discover(opts = {}) {
+    const scanPort = opts.port || this.profile.port;
+    const timeoutMs = opts.timeoutMs || 2500;
+    const targets = opts.targets || [];
+    return new Promise((resolve) => {
+      const found = new Map();
+      let server;
+      const finish = () => { try { server.close(); } catch (_) { /* ignore */ } resolve([...found.values()]); };
+      try {
+        server = new Server(0, '0.0.0.0', () => {
+          try { server._sock.setBroadcast(true); } catch (_) { /* ignore */ }
+          const ask = (addr) => {
+            try { server.send(['/xinfo'], scanPort, addr); } catch (_) { /* ignore */ }
+            try { server.send(['/info'], scanPort, addr); } catch (_) { /* ignore */ }
+          };
+          ask('255.255.255.255');
+          targets.forEach(ask);
+        });
+      } catch (_) { return resolve([]); }
+      server.on('message', (msg, rinfo) => {
+        const ip = rinfo && rinfo.address;
+        if (!ip) return;
+        const a = msg.slice(1).map((x) => (typeof x === 'string' ? x : ''));
+        found.set(ip, { ip, name: a[1] || '', model: a[2] || a[1] || '' });
+      });
+      server.on('error', () => {});
+      setTimeout(finish, timeoutMs);
+    });
   }
 
   disconnect() {

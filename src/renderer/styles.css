@@ -478,6 +478,44 @@ body.simple .feedback { display: none; }
 .eq-table { width: 100%; }
 .eq-table th, .eq-table td { padding: 7px 10px; }
 
+/* ---- 연결 도움말 / 믹서 찾기 ---- */
+.net-body { padding: 14px 16px; overflow-y: auto; font-size: 13.5px; line-height: 1.55; }
+.net-find { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.net-find .muted { color: var(--muted); font-size: 12.5px; }
+.net-results { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.net-hit {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--bg2); border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px;
+}
+.net-hit .nh-info { display: flex; flex-direction: column; gap: 2px; }
+.net-hit .nh-ip { color: var(--muted); font-size: 12px; font-family: monospace; }
+.net-empty {
+  background: rgba(255,180,60,.08); border: 1px solid rgba(255,180,60,.35);
+  border-radius: 10px; padding: 11px 13px; color: #ffcf8f; font-size: 12.8px;
+}
+.net-explain { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.net-explain h4 { margin: 0 0 8px; font-size: 14px; }
+.net-explain p { margin: 8px 0; }
+.net-diagram { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+.nd-ok, .nd-bad {
+  border-radius: 10px; padding: 10px 12px; font-size: 12.6px; line-height: 1.7;
+}
+.nd-ok { background: rgba(78,201,142,.09); border: 1px solid rgba(78,201,142,.4); }
+.nd-bad { background: rgba(255,99,99,.08); border: 1px solid rgba(255,99,99,.4); }
+.nd-title { font-weight: 700; margin-bottom: 5px; }
+.nd-sub { color: var(--muted); margin-top: 5px; font-size: 12px; }
+.net-tip {
+  background: var(--card2); border: 1px solid var(--line2); border-radius: 10px;
+  padding: 10px 12px; margin-top: 12px !important;
+}
+.net-adv { color: var(--muted); font-size: 12.3px; }
+.net-adv code { background: var(--bg2); padding: 1px 5px; border-radius: 4px; }
+.ipbox {
+  background: var(--bg2); border: 1px solid var(--line2); border-radius: 5px;
+  padding: 1px 7px; font-family: monospace; color: var(--text);
+}
+@media (max-width: 520px) { .net-diagram { grid-template-columns: 1fr; } }
+
 /* ---- 토스트 ---- */
 .toast {
   position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
