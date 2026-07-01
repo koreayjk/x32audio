@@ -31,6 +31,10 @@
       "buildResources": "build"
     },
     "afterPack": "build/after-pack.js",
+    "electronFuses": {
+      "enableEmbeddedAsarIntegrityValidation": false,
+      "onlyLoadAppFromAsar": false
+    },
     "files": [
       "src/**/*",
       "assets/**/*",
