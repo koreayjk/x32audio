@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('x32api', {
   stopFeedback: () => ipcRenderer.invoke('x32:stop-feedback'),
   captureState: (count) => ipcRenderer.invoke('x32:capture-state', { count }),
   applyStates: (states) => ipcRenderer.invoke('x32:apply-states', { states }),
+  captureFull: (count) => ipcRenderer.invoke('x32:capture-full', { count }),
+  applyFull: (states, opts) => ipcRenderer.invoke('x32:apply-full', { states, opts }),
   setFader: (ch, fader) => ipcRenderer.invoke('x32:set-fader', { ch, fader }),
   setMute: (ch, on) => ipcRenderer.invoke('x32:set-mute', { ch, on }),
   setAutoSuppress: (enabled, options) => ipcRenderer.invoke('x32:auto-suppress', { enabled, options }),

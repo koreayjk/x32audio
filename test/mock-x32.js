@@ -29,6 +29,9 @@ class MockX32 {
       this.params.set(`/ch/${id}/config/name`, [`CH${id}`]);
       this.params.set(`/ch/${id}/mix/on`, [1]);
       this.params.set(`/ch/${id}/mix/fader`, [0.75]);
+      this.params.set(`/ch/${id}/preamp/hpon`, [0]);
+      this.params.set(`/ch/${id}/preamp/hpf`, [0.1]);
+      this.params.set(`/ch/${id}/preamp/trim`, [0.5]);
       this.params.set(`/ch/${id}/eq/on`, [1]);
       for (let b = 1; b <= 4; b++) {
         this.params.set(`/ch/${id}/eq/${b}/type`, [2]);

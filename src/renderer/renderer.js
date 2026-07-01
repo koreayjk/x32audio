@@ -30,6 +30,7 @@ const toast = $('toast');
 
 let connected = false;
 let feedbackOn = false;
+let lastHost = null;
 const activeAlerts = new Map(); // freq -> li element
 
 // ---- 토스트 ----
@@ -61,11 +62,13 @@ function setConnected(info) {
   updateUndo();
   applyI18n();
   if (info) {
+    if (info.ip) lastHost = info.ip;
     infoStrip.classList.remove('hidden');
     infoStrip.innerHTML =
       `콘솔: <b>${esc(info.name || '-')}</b> · 모델: <b>${esc(info.model || '-')}</b> · ` +
       `펌웨어: <b>${esc(info.firmware || '-')}</b> · IP: <b>${esc(info.ip || '-')}</b>`;
   }
+  updateOrigButton();
 }
 
 function setDisconnected() {
@@ -87,6 +90,7 @@ function setDisconnected() {
   setServiceEnabled(false);
   updateCueButtons();
   updateUndo();
+  updateOrigButton();
   applyI18n();
 }
 
@@ -109,9 +113,10 @@ connectBtn.addEventListener('click', async () => {
   connectBtn.disabled = true;
   try {
     const info = await api.connect(host, port);
+    lastHost = (info && info.ip) || host;
     setConnected(info);
     showToast('X32 에 연결되었습니다.', 'ok');
-    loadChannels();
+    loadChannels().then(() => autoBackupOriginal(lastHost));
   } catch (err) {
     setDisconnected();
     showToast(errMsg(err), 'err');
@@ -675,7 +680,7 @@ const chRows = new Map(); // ch -> { tr, data }
 const I18N = {
   ko: {
     mixerSelect: '믹서 선택',
-    undo: '되돌리기', backup: '백업', restore: '복원', remote: '원격 조작', simple: '쉬운 모드',
+    undo: '되돌리기', backup: '백업', restore: '복원', restoreOriginal: '원본 복구', remote: '원격 조작', simple: '쉬운 모드',
     channels: '채널 상태', live: '실시간', chCount: '채널 수', cue: '예배 순서 큐', feedback: '피드백 감지',
     scenes: 'Scene 템플릿', custom: '사용자 정의 Scene', close: '닫기', micPreset: '인물별 마이크 프리셋',
     savePreset: '이 채널 저장', remoteTitle: '태블릿/폰 원격 조작', ipAddr: 'X32 IP 주소', port: '포트',
@@ -689,7 +694,7 @@ const I18N = {
   },
   en: {
     mixerSelect: 'Mixer',
-    undo: 'Undo', backup: 'Backup', restore: 'Restore', remote: 'Remote', simple: 'Simple mode',
+    undo: 'Undo', backup: 'Backup', restore: 'Restore', restoreOriginal: 'Restore original', remote: 'Remote', simple: 'Simple mode',
     channels: 'Channels', live: 'Live', chCount: 'Count', cue: 'Service Cue', feedback: 'Feedback',
     scenes: 'Scene Templates', custom: 'Custom Scenes', close: 'Close', micPreset: 'Mic Presets (per person)',
     savePreset: 'Save channel', remoteTitle: 'Tablet/Phone Remote', ipAddr: 'X32 IP', port: 'Port',
@@ -750,7 +755,10 @@ backupBtn.addEventListener('click', async () => {
     customScenes, cue, presets,
   };
   if (connected) {
-    try { data.console = await api.captureState(32); } catch (_) { /* ignore */ }
+    showToast('콘솔 세팅을 읽는 중… 잠시만요.', 'ok');
+    try { data.console = await api.captureFull(32); } catch (_) {
+      try { data.console = await api.captureState(32); } catch (_2) { /* ignore */ }
+    }
   }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -781,10 +789,75 @@ restoreFile.addEventListener('change', async () => {
     if (connected && Array.isArray(data.console) &&
         confirm('백업에 콘솔 채널 상태가 있습니다. 지금 콘솔에 적용할까요?')) {
       await snapshotForUndo();
-      await api.applyStates(data.console);
-      setTimeout(loadChannels, 250);
+      await api.applyFull(data.console, { withFader: true });
+      setTimeout(loadChannels, 300);
     }
   } catch (err) { showToast('복원 실패: ' + errMsg(err), 'err'); }
+});
+
+// ---- 연결 시 원본 세팅 자동 저장 / 복구 ----
+// 믹서에 이미 설정돼 있던 값(이름·페이더·음소거·EQ 등)을 연결 직후 통째로 저장해
+// 언제든 "원래대로" 되돌릴 수 있는 안전장치. 같은 콘솔의 첫 연결본을 원본으로 보존한다.
+const ORIGINAL_KEY = 'x32_original';
+const origRestoreBtn = $('origRestoreBtn');
+
+function loadOriginals() {
+  try { return JSON.parse(localStorage.getItem(ORIGINAL_KEY)) || {}; } catch (_) { return {}; }
+}
+function saveOriginals(obj) {
+  try { localStorage.setItem(ORIGINAL_KEY, JSON.stringify(obj)); } catch (_) { /* ignore */ }
+}
+function origKey() { return lastHost || 'default'; }
+
+function fmtWhen(iso) {
+  try {
+    const d = new Date(iso);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  } catch (_) { return iso || ''; }
+}
+
+function updateOrigButton() {
+  if (!origRestoreBtn) return;
+  const snap = connected ? loadOriginals()[origKey()] : null;
+  origRestoreBtn.disabled = !snap;
+  origRestoreBtn.title = snap
+    ? `연결 시 저장한 원본 세팅으로 되돌립니다 (저장: ${fmtWhen(snap.savedAt)})`
+    : '연결하면 믹서의 원본 세팅이 자동으로 저장됩니다';
+}
+
+// 연결 직후 호출: 이 콘솔의 원본이 아직 없으면 지금 상태를 원본으로 저장한다.
+async function autoBackupOriginal(host) {
+  if (!connected || !api.captureFull) return;
+  const store = loadOriginals();
+  const key = host || 'default';
+  if (store[key]) { updateOrigButton(); return; } // 이미 원본 보관 중 → 덮어쓰지 않음
+  try {
+    const states = await api.captureFull(32);
+    if (!connected) return; // 저장 도중 연결 해제되면 무시
+    store[key] = { savedAt: new Date().toISOString(), host: key, states };
+    saveOriginals(store);
+    updateOrigButton();
+    showToast('연결 시점의 믹서 원본 세팅을 자동 저장했습니다. 언제든 "🔒 원본 복구"로 되돌릴 수 있어요.', 'ok');
+  } catch (_) { /* 조용히 무시 (미연결 등) */ }
+}
+
+if (origRestoreBtn) origRestoreBtn.addEventListener('click', async () => {
+  if (!connected) return showToast('먼저 믹서에 연결하세요.', 'err');
+  const snap = loadOriginals()[origKey()];
+  if (!snap || !Array.isArray(snap.states)) return showToast('저장된 원본 세팅이 없습니다.', 'err');
+  if (!confirm(`이 믹서를 처음 연결했을 때(${fmtWhen(snap.savedAt)})의 원본 세팅으로 되돌립니다.\n페이더·음소거·EQ가 그때 값으로 바뀝니다. 계속할까요?`)) return;
+  origRestoreBtn.disabled = true;
+  try {
+    await snapshotForUndo();
+    const n = await api.applyFull(snap.states, { withFader: true });
+    showToast(`원본 세팅으로 되돌렸습니다 (${n}개 값 적용).`, 'ok');
+    setTimeout(loadChannels, 350);
+  } catch (err) {
+    showToast('원본 복구 실패: ' + errMsg(err), 'err');
+  } finally {
+    updateOrigButton();
+  }
 });
 
 // ---- 인물별 마이크 프리셋 (EQ 모달 내) ----
@@ -1556,8 +1629,10 @@ if (netHelp) netHelp.addEventListener('click', (e) => { if (e.target === netHelp
   renderCue();
   applyI18n();
   const status = await api.getStatus();
-  if (status.connected) setConnected(status.info);
-  else setDisconnected();
+  if (status.connected) {
+    setConnected(status.info);
+    loadChannels().then(() => autoBackupOriginal(lastHost));
+  } else setDisconnected();
 
   // 처음 실행 시: 믹서 선택 화면 먼저, 이후 가이드 투어
   let mixerType = null;

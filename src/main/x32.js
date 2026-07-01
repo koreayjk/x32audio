@@ -551,6 +551,54 @@ class X32Manager extends MixerAdapter {
     return n;
   }
 
+  // ---- 원본 세팅 전체 캡처 / 복원 ----
+
+  /**
+   * 연결 시점의 "원본 세팅"을 채널별로 통째로 캡처한다.
+   * 이름·음소거·페이더 + 소리(EQ/로우컷/트림)를 모두 담아 안전한 복구 지점을 만든다.
+   * @param {number} [count=32]
+   * @param {(done:number,total:number)=>void} [onProgress]
+   * @returns {Promise<Array<{ch,name,on,fader,preset}>>}
+   */
+  async captureFullState(count = 32, onProgress) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    const out = [];
+    const CONCURRENCY = 2;
+    const one = async (ch) => {
+      const strip = await this.readChannelStrip(ch).catch(() => ({ ch, name: null, on: false, fader: null }));
+      const preset = await this.captureChannelPreset(ch).catch(() => null);
+      return { ch, name: strip.name, on: strip.on, fader: strip.fader, preset };
+    };
+    for (let start = 1; start <= count; start += CONCURRENCY) {
+      const batch = [];
+      for (let ch = start; ch < start + CONCURRENCY && ch <= count; ch++) batch.push(one(ch));
+      const res = await Promise.all(batch);
+      res.forEach((r) => out.push(r));
+      if (onProgress) onProgress(out.length, count);
+    }
+    out.sort((a, b) => a.ch - b.ch);
+    return out;
+  }
+
+  /**
+   * captureFullState 로 저장한 원본 세팅을 콘솔에 다시 적용한다.
+   * @param {Array<{ch,on,fader,preset}>} states
+   * @param {{withFader?:boolean}} [opts] 페이더까지 되돌릴지 (기본 true)
+   * @returns {number} 전송한 명령 개수
+   */
+  applyFullState(states, opts = {}) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    const withFader = opts.withFader !== false;
+    let n = 0;
+    for (const st of states || []) {
+      const id = util.chId(st.ch);
+      if (typeof st.on === 'boolean') { this.bus.send(`/ch/${id}/mix/on`, [util.i(st.on ? 1 : 0)]); n++; }
+      if (st.preset) n += this.applyChannelPreset(st.ch, st.preset, false);
+      if (withFader && typeof st.fader === 'number') { this.bus.send(`/ch/${id}/mix/fader`, [util.f(st.fader)]); n++; }
+    }
+    return n;
+  }
+
   // ---- 자동 피드백 억제 ----
 
   setAutoSuppress(enabled, options) {

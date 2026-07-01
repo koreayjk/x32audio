@@ -162,6 +162,14 @@ ipcMain.handle('x32:apply-states', async (_e, { states }) => {
   return x32.applyChannelStates(states);
 });
 
+ipcMain.handle('x32:capture-full', async (_e, { count } = {}) => {
+  return x32.captureFullState(count || 32, (done, total) => send('x32:capture-progress', { done, total }));
+});
+
+ipcMain.handle('x32:apply-full', async (_e, { states, opts } = {}) => {
+  return x32.applyFullState(states, opts || {});
+});
+
 ipcMain.handle('x32:set-fader', async (_e, { ch, fader }) => {
   x32.setChannelFader(ch, fader);
   return true;
