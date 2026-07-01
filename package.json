@@ -31,10 +31,6 @@
       "buildResources": "build"
     },
     "asar": false,
-    "electronFuses": {
-      "enableEmbeddedAsarIntegrityValidation": false,
-      "onlyLoadAppFromAsar": false
-    },
     "files": [
       "src/**/*",
       "assets/**/*",
