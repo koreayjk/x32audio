@@ -1,6 +1,6 @@
 {
   "name": "x32-church-audio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Behringer X32 믹서를 위한 교회 음향 자동화 데스크탑 앱 (Phase 1)",
   "main": "src/main/main.js",
   "author": "",
@@ -59,6 +59,17 @@
       "extendInfo": {
         "CFBundleDisplayName": "X32 교회 음향"
       }
+    },
+    "dmg": {
+      "window": {
+        "width": 560,
+        "height": 420
+      },
+      "contents": [
+        { "x": 150, "y": 180, "type": "file" },
+        { "x": 410, "y": 180, "type": "link", "path": "/Applications" },
+        { "x": 280, "y": 330, "type": "file", "path": "scripts/맥-처음실행-문제해결.command" }
+      ]
     }
   }
 }
