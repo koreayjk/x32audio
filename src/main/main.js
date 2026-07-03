@@ -170,6 +170,10 @@ ipcMain.handle('x32:apply-full', async (_e, { states, opts } = {}) => {
   return x32.applyFullState(states, opts || {});
 });
 
+ipcMain.handle('x32:save-console-scene', async (_e, opts) => x32.saveToConsoleScene(opts || {}));
+
+ipcMain.handle('x32:load-console-scene', async (_e, { index }) => x32.loadConsoleScene(index));
+
 ipcMain.handle('x32:set-fader', async (_e, { ch, fader }) => {
   x32.setChannelFader(ch, fader);
   return true;

@@ -599,6 +599,49 @@ class X32Manager extends MixerAdapter {
     return n;
   }
 
+  // ---- 믹서 자체 Scene 메모리 저장/불러오기 ----
+  // 앱 없이(컴퓨터 없이) 믹서 단독으로도 세팅을 불러올 수 있게,
+  // 콘솔 내부 Scene 슬롯(0~99)에 현재 전체 상태를 저장한다.
+
+  /** 비어 있는 첫 Scene 슬롯 번호를 찾는다 (0~99). 없으면 -1. */
+  async findEmptyConsoleScene(max = 100) {
+    for (let i = 0; i < max; i++) {
+      const id = String(i).padStart(3, '0');
+      // hasdata=1 이면 사용 중. 응답이 없거나(미사용 슬롯) 0 이면 빈 슬롯.
+      const a = await this.bus.query(`/-show/showfile/scene/${id}/hasdata`, 300).catch(() => [0]);
+      if (!(a[0] === 1 || a[0] === true)) return i;
+    }
+    return -1;
+  }
+
+  /**
+   * 콘솔의 현재 전체 상태를 믹서 자체 Scene 메모리에 저장한다.
+   * @param {{index?:number, name?:string, note?:string}} opts
+   *        index 를 주지 않으면 빈 슬롯을 자동으로 찾는다.
+   * @returns {{index:number, name:string, verified:boolean}}
+   */
+  async saveToConsoleScene(opts = {}) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    let idx = typeof opts.index === 'number' ? opts.index : await this.findEmptyConsoleScene();
+    if (idx < 0) throw new Error('빈 Scene 슬롯이 없습니다 (0~99 모두 사용 중). 믹서에서 안 쓰는 Scene 을 지워주세요.');
+    const name = String(opts.name || 'CHURCH-APP').slice(0, 12); // X32 Scene 이름 최대 12자
+    const note = String(opts.note || 'x32audio app').slice(0, 20);
+    this.bus.send('/save', [util.s('scene'), util.i(idx), util.s(name), util.s(note)]);
+    // 저장 반영 확인: 잠시 후 해당 슬롯 이름을 읽어본다
+    await new Promise((r) => setTimeout(r, 400));
+    const id = String(idx).padStart(3, '0');
+    const chk = await this.bus.query(`/-show/showfile/scene/${id}/name`, 800).catch(() => [null]);
+    const verified = typeof chk[0] === 'string' && chk[0].length > 0;
+    return { index: idx, name, verified };
+  }
+
+  /** 믹서 Scene 슬롯을 불러온다(적용). 콘솔에서 GO 누르는 것과 동일. */
+  loadConsoleScene(index) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    this.bus.send('/load', [util.s('scene'), util.i(index)]);
+    return true;
+  }
+
   // ---- 자동 피드백 억제 ----
 
   setAutoSuppress(enabled, options) {

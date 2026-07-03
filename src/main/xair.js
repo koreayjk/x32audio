@@ -37,6 +37,38 @@ class XAirAdapter extends X32Manager {
     super(XAIR_PROFILE);
     // X-Air 는 보통 6개 버스 — 모니터 버스 기본값은 그대로 두되 범위 안에서 사용
   }
+
+  // ---- X-Air 는 Scene 대신 "스냅샷"(1~64) 을 쓴다 ----
+
+  async findEmptyConsoleScene(max = 64) {
+    for (let i = 1; i <= max; i++) {
+      const id = String(i).padStart(2, '0');
+      const a = await this.bus.query(`/-snap/${id}/name`, 300).catch(() => ['']);
+      const name = typeof a[0] === 'string' ? a[0].trim() : '';
+      if (!name) return i;
+    }
+    return -1;
+  }
+
+  async saveToConsoleScene(opts = {}) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    let idx = typeof opts.index === 'number' ? opts.index : await this.findEmptyConsoleScene();
+    if (idx < 0) throw new Error('빈 스냅샷 슬롯이 없습니다 (1~64 모두 사용 중).');
+    const name = String(opts.name || 'CHURCH-APP').slice(0, 12);
+    this.bus.send('/-snap/save', [{ type: 'i', value: idx }]);
+    const id = String(idx).padStart(2, '0');
+    this.bus.send(`/-snap/${id}/name`, [{ type: 's', value: name }]);
+    await new Promise((r) => setTimeout(r, 400));
+    const chk = await this.bus.query(`/-snap/${id}/name`, 800).catch(() => [null]);
+    const verified = typeof chk[0] === 'string' && chk[0].length > 0;
+    return { index: idx, name, verified };
+  }
+
+  loadConsoleScene(index) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    this.bus.send('/-snap/load', [{ type: 'i', value: index }]);
+    return true;
+  }
 }
 
 module.exports = { XAirAdapter, XAIR_PROFILE };

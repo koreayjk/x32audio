@@ -56,6 +56,7 @@ function setConnected(info) {
   feedbackBtn.disabled = false;
   if (autoSuppress) autoSuppress.disabled = false;
   if (saveStateBtn) saveStateBtn.disabled = false;
+  if (mixerSaveBtn) mixerSaveBtn.disabled = false;
   if (liveSync) liveSync.disabled = false;
   setServiceEnabled(true);
   updateCueButtons();
@@ -85,6 +86,7 @@ function setDisconnected() {
   infoStrip.classList.add('hidden');
   if (autoSuppress) { autoSuppress.checked = false; autoSuppress.disabled = true; }
   if (saveStateBtn) saveStateBtn.disabled = true;
+  if (mixerSaveBtn) mixerSaveBtn.disabled = true;
   if (suppressInfo) { suppressInfo.textContent = ''; suppressInfo.classList.remove('active'); }
   if (liveSync) { liveSync.checked = false; liveSync.disabled = true; }
   setServiceEnabled(false);
@@ -680,7 +682,7 @@ const chRows = new Map(); // ch -> { tr, data }
 const I18N = {
   ko: {
     mixerSelect: '믹서 선택',
-    undo: '되돌리기', backup: '백업', restore: '복원', restoreOriginal: '원본 복구', remote: '원격 조작', simple: '쉬운 모드',
+    undo: '되돌리기', backup: '백업', restore: '복원', restoreOriginal: '원본 복구', saveToMixer: '믹서에 저장', remote: '원격 조작', simple: '쉬운 모드',
     channels: '채널 상태', live: '실시간', chCount: '채널 수', cue: '예배 순서 큐', feedback: '피드백 감지',
     scenes: 'Scene 템플릿', custom: '사용자 정의 Scene', close: '닫기', micPreset: '인물별 마이크 프리셋',
     savePreset: '이 채널 저장', remoteTitle: '태블릿/폰 원격 조작', ipAddr: 'X32 IP 주소', port: '포트',
@@ -694,7 +696,7 @@ const I18N = {
   },
   en: {
     mixerSelect: 'Mixer',
-    undo: 'Undo', backup: 'Backup', restore: 'Restore', restoreOriginal: 'Restore original', remote: 'Remote', simple: 'Simple mode',
+    undo: 'Undo', backup: 'Backup', restore: 'Restore', restoreOriginal: 'Restore original', saveToMixer: 'Save to mixer', remote: 'Remote', simple: 'Simple mode',
     channels: 'Channels', live: 'Live', chCount: 'Count', cue: 'Service Cue', feedback: 'Feedback',
     scenes: 'Scene Templates', custom: 'Custom Scenes', close: 'Close', micPreset: 'Mic Presets (per person)',
     savePreset: 'Save channel', remoteTitle: 'Tablet/Phone Remote', ipAddr: 'X32 IP', port: 'Port',
@@ -841,6 +843,36 @@ async function autoBackupOriginal(host) {
     showToast('연결 시점의 믹서 원본 세팅을 자동 저장했습니다. 언제든 "🔒 원본 복구"로 되돌릴 수 있어요.', 'ok');
   } catch (_) { /* 조용히 무시 (미연결 등) */ }
 }
+
+// ---- 믹서 자체 Scene 메모리에 저장 ----
+// 최적화한 세팅을 믹서 내부(빈 Scene 번호)에 저장해, 컴퓨터 없이도
+// 믹서 단독으로 불러올 수 있게 한다.
+const mixerSaveBtn = $('mixerSaveBtn');
+if (mixerSaveBtn) mixerSaveBtn.addEventListener('click', async () => {
+  if (!connected) return showToast('먼저 믹서에 연결하세요.', 'err');
+  if (!confirm('지금 믹서의 전체 상태를 믹서 자체 메모리(빈 Scene 번호)에 저장합니다.\n컴퓨터가 없어도 믹서에서 바로 불러올 수 있어요. 계속할까요?')) return;
+  mixerSaveBtn.disabled = true;
+  showToast('빈 Scene 번호를 찾는 중…', 'ok');
+  try {
+    const d = new Date();
+    const nm = `APP-${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    const r = await api.saveConsoleScene({ name: nm });
+    showToast(`믹서 Scene #${r.index} ("${r.name}") 에 저장했습니다.`, 'ok');
+    alert(
+      `✅ 믹서 Scene #${r.index} ("${r.name}") 에 저장 완료!` +
+      (r.verified ? '' : '\n(⚠ 저장 확인 응답이 늦네요 — 믹서 SCENES 화면에서 한번 확인해 주세요)') +
+      '\n\n📌 믹서에서 다시 불러오는 법 (컴퓨터 불필요):\n' +
+      `  1. 믹서 오른쪽 SCENES 구역의 VIEW 버튼을 누른다\n` +
+      `  2. 휠(다이얼)을 돌려 ${r.index}번 Scene 을 선택한다\n` +
+      '  3. GO 버튼을 누르면 저장된 세팅이 그대로 적용된다\n\n' +
+      '앱의 "🎚 믹서에 저장"을 다시 누르면 그날 세팅이 새 빈 번호에 저장됩니다.'
+    );
+  } catch (err) {
+    showToast('믹서 저장 실패: ' + errMsg(err), 'err');
+  } finally {
+    mixerSaveBtn.disabled = !connected;
+  }
+});
 
 if (origRestoreBtn) origRestoreBtn.addEventListener('click', async () => {
   if (!connected) return showToast('먼저 믹서에 연결하세요.', 'err');

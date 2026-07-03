@@ -83,6 +83,15 @@ class MockX32 {
       return;
     }
 
+    // Scene 저장: /save "scene" idx name note → 해당 슬롯을 사용 중으로 표시
+    if (addr === '/save' && msg[1] === 'scene') {
+      const id = String(msg[2]).padStart(3, '0');
+      this.params.set(`/-show/showfile/scene/${id}/name`, [msg[3] || 'SCENE']);
+      this.params.set(`/-show/showfile/scene/${id}/hasdata`, [1]);
+      this._reply('/save', [1], rinfo);
+      return;
+    }
+
     // 설정(인자 포함) vs 질의(인자 없음)는 인자 개수로 구분한다.
     if (msg.length > 1) {
       this.params.set(addr, msg.slice(1)); // 설정

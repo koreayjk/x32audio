@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld('x32api', {
   applyStates: (states) => ipcRenderer.invoke('x32:apply-states', { states }),
   captureFull: (count) => ipcRenderer.invoke('x32:capture-full', { count }),
   applyFull: (states, opts) => ipcRenderer.invoke('x32:apply-full', { states, opts }),
+  saveConsoleScene: (opts) => ipcRenderer.invoke('x32:save-console-scene', opts),
+  loadConsoleScene: (index) => ipcRenderer.invoke('x32:load-console-scene', { index }),
   setFader: (ch, fader) => ipcRenderer.invoke('x32:set-fader', { ch, fader }),
   setMute: (ch, on) => ipcRenderer.invoke('x32:set-mute', { ch, on }),
   setAutoSuppress: (enabled, options) => ipcRenderer.invoke('x32:auto-suppress', { enabled, options }),
