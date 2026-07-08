@@ -592,3 +592,29 @@ body::before {
     linear-gradient(180deg, rgba(12,15,22,.84), rgba(12,15,22,.92)),
     url("assets/bg/bg-analog.jpg") center/cover no-repeat;
 }
+
+/* ---- 연결 후 첫 사용자 안내 카드 ---- */
+.guide-next {
+  border: 1px solid rgba(91,140,255,.45);
+  background:
+    linear-gradient(180deg, rgba(91,140,255,.10), rgba(138,107,255,.05)),
+    var(--card);
+}
+.gn-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gn-head h2 { margin: 0; font-size: 16px; }
+.gn-steps { list-style: none; margin: 14px 0 4px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.gn-steps li { display: flex; gap: 12px; align-items: flex-start; }
+.gn-num {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--grad); color: #fff; font-weight: 700; font-size: 14px;
+  display: flex; align-items: center; justify-content: center; margin-top: 1px;
+}
+.gn-body { font-size: 13.5px; line-height: 1.5; }
+.gn-body b { color: var(--text); }
+.gn-act { margin-top: 7px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gn-hint { color: var(--muted); font-size: 12px; }
+.gn-foot {
+  margin: 14px 0 0; padding: 10px 12px; font-size: 12.6px; line-height: 1.5;
+  background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; color: var(--muted);
+}
+.gn-foot b { color: var(--text); }

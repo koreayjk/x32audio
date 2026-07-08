@@ -66,6 +66,47 @@
   <main class="grid">
     <!-- 좌측 컬럼 -->
     <div class="main-col">
+      <!-- 연결 후 첫 사용자 안내 -->
+      <section class="card guide-next hidden" id="connectedGuide">
+        <div class="gn-head">
+          <h2>🎉 연결됐어요! 이제 이 순서로 하면 돼요</h2>
+          <button id="gnClose" class="btn ghost small">닫기</button>
+        </div>
+        <ol class="gn-steps">
+          <li>
+            <span class="gn-num">1</span>
+            <div class="gn-body">
+              <b>채널 확인하기</b> — 우리 믹서에 연결된 마이크·악기 목록을 불러옵니다.
+              <div class="gn-act">
+                <button id="gnRead" class="btn small">🎙 채널 불러오기</button>
+                <span class="gn-hint">아래 "채널 상태"에 나타나요</span>
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="gn-num">2</span>
+            <div class="gn-body">
+              <b>예배 세팅 한 번에</b> — 본당 스피커·유튜브 방송·찬양팀 모니터, 3개 출력을 자동으로 잡아줍니다.
+              <div class="gn-act">
+                <button id="gnService" class="btn small primary">▶ 예배 시작</button>
+                <span class="gn-hint">한 번만 누르면 끝</span>
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="gn-num">3</span>
+            <div class="gn-body">
+              <b>믹서에 저장해두기</b> — 오늘 잡은 세팅을 믹서 자체에 저장하면, 다음 주엔 컴퓨터 없이 믹서에서 바로 불러올 수 있어요.
+              <div class="gn-act">
+                <button id="gnSave" class="btn small">🎚 믹서에 저장</button>
+                <span class="gn-hint">믹서 SCENES → 번호 → GO 로 불러오기</span>
+              </div>
+            </div>
+          </li>
+        </ol>
+        <p class="gn-foot">🔒 연결하자마자 <b>원래 세팅은 자동으로 백업</b>됐어요. 뭘 만져도 위쪽 <b>"원본 복구"</b>로 언제든 되돌릴 수 있으니 마음 놓고 눌러보세요.</p>
+      </section>
+
       <!-- 예배 운영 · 3개 출력 -->
       <section class="card service">
         <div class="card-head">

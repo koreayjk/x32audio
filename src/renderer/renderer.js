@@ -70,6 +70,7 @@ function setConnected(info) {
       `펌웨어: <b>${esc(info.firmware || '-')}</b> · IP: <b>${esc(info.ip || '-')}</b>`;
   }
   updateOrigButton();
+  showConnectedGuide();
 }
 
 function setDisconnected() {
@@ -93,6 +94,7 @@ function setDisconnected() {
   updateCueButtons();
   updateUndo();
   updateOrigButton();
+  hideConnectedGuide();
   applyI18n();
 }
 
@@ -842,6 +844,30 @@ async function autoBackupOriginal(host) {
     updateOrigButton();
     showToast('연결 시점의 믹서 원본 세팅을 자동 저장했습니다. 언제든 "🔒 원본 복구"로 되돌릴 수 있어요.', 'ok');
   } catch (_) { /* 조용히 무시 (미연결 등) */ }
+}
+
+// ---- 연결 후 첫 사용자 안내 카드 ----
+const connectedGuide = $('connectedGuide');
+function showConnectedGuide() {
+  if (connectedGuide) connectedGuide.classList.remove('hidden');
+}
+function hideConnectedGuide() {
+  if (connectedGuide) connectedGuide.classList.add('hidden');
+}
+{
+  const gnClose = $('gnClose');
+  const gnRead = $('gnRead');
+  const gnService = $('gnService');
+  const gnSave = $('gnSave');
+  if (gnClose) gnClose.addEventListener('click', hideConnectedGuide);
+  // 각 단계 버튼은 기존 동작 버튼을 그대로 실행
+  if (gnRead) gnRead.addEventListener('click', () => { if (refreshBtn) refreshBtn.click(); });
+  if (gnService) gnService.addEventListener('click', () => {
+    const b = $('serviceStartBtn'); if (b && !b.disabled) b.click();
+  });
+  if (gnSave) gnSave.addEventListener('click', () => {
+    const b = $('mixerSaveBtn'); if (b && !b.disabled) b.click();
+  });
 }
 
 // ---- 믹서 자체 Scene 메모리에 저장 ----
