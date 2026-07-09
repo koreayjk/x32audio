@@ -31,6 +31,26 @@ const toast = $('toast');
 let connected = false;
 let feedbackOn = false;
 let lastHost = null;
+let serviceApplied = false; // "예배 시작" 프리셋을 이번 세션에 적용했는지
+
+// ---- 지금 적용 상태 표시줄 ----
+function setChip(id, on, onText, offText) {
+  const el = $(id);
+  if (!el) return;
+  el.classList.toggle('on', !!on);
+  const em = el.querySelector('em');
+  if (em) em.textContent = on ? onText : offText;
+}
+function updateStatusStrip() {
+  const strip = $('statusStrip');
+  if (!strip) return;
+  if (!connected) { strip.classList.add('hidden'); return; }
+  strip.classList.remove('hidden');
+  setChip('ssService', serviceApplied, '적용됨', '미적용');
+  setChip('ssSermon', $('sermonMode') && $('sermonMode').checked, '켜짐', '꺼짐');
+  setChip('ssLoud', $('loudnessMode') && $('loudnessMode').checked, '켜짐', '꺼짐');
+  setChip('ssFeedback', feedbackOn, '켜짐', '꺼짐');
+}
 const activeAlerts = new Map(); // freq -> li element
 
 // ---- 토스트 ----
@@ -71,9 +91,11 @@ function setConnected(info) {
   }
   updateOrigButton();
   showConnectedGuide();
+  updateStatusStrip();
 }
 
 function setDisconnected() {
+  serviceApplied = false;
   connected = false;
   feedbackOn = false;
   setStatus('off', '연결 안 됨');
@@ -95,6 +117,7 @@ function setDisconnected() {
   updateUndo();
   updateOrigButton();
   hideConnectedGuide();
+  updateStatusStrip();
   applyI18n();
 }
 
@@ -259,6 +282,7 @@ feedbackBtn.addEventListener('click', async () => {
     feedbackBtn.textContent = tr('stopDetect');
     fbState.textContent = '감지 중…';
   }
+  updateStatusStrip();
 });
 
 sensitivity.addEventListener('input', () => {
@@ -1055,6 +1079,8 @@ serviceStartBtn.addEventListener('click', async () => {
     await snapshotForUndo();
     const n = await api.serviceStart();
     [outMain, outBroadcast, outMonitor].forEach((e) => e.classList.add('active'));
+    serviceApplied = true;
+    updateStatusStrip();
     showToast(`예배 시작: 3개 출력 적용 (${n}개 명령 전송)`, 'ok');
     setTimeout(loadChannels, 300);
   } catch (err) { showToast('적용 실패: ' + errMsg(err), 'err'); }
@@ -1063,12 +1089,14 @@ serviceStartBtn.addEventListener('click', async () => {
 sermonMode.addEventListener('change', async () => {
   try {
     await api.sermonDuck(sermonMode.checked);
+    updateStatusStrip();
     showToast(sermonMode.checked
       ? '🎤 설교 모드: 방송 버스의 악기 레벨을 낮췄습니다.'
       : '설교 모드 해제: 방송 악기 레벨을 복원했습니다.', 'ok');
   } catch (err) {
     showToast(errMsg(err), 'err');
     sermonMode.checked = !sermonMode.checked;
+    updateStatusStrip();
   }
 });
 
@@ -1084,9 +1112,11 @@ loudnessMode.addEventListener('change', async () => {
       lufsVal.parentElement.classList.remove('on-target');
       showToast('방송 자동 레벨 중지');
     }
+    updateStatusStrip();
   } catch (err) {
     showToast(errMsg(err), 'err');
     loudnessMode.checked = !loudnessMode.checked;
+    updateStatusStrip();
   }
 });
 
@@ -1096,7 +1126,7 @@ api.on('loudness', (e) => {
   const onTarget = Math.abs(e.lufs - (e.target || -14)) <= 1.5;
   lufsVal.parentElement.classList.toggle('on-target', onTarget);
 });
-api.on('sermon-duck', (r) => { if (r) sermonMode.checked = !!r.on; });
+api.on('sermon-duck', (r) => { if (r) { sermonMode.checked = !!r.on; updateStatusStrip(); } });
 
 function setServiceEnabled(on) {
   serviceStartBtn.disabled = !on;

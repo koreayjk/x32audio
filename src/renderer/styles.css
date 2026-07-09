@@ -618,3 +618,25 @@ body::before {
   background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; color: var(--muted);
 }
 .gn-foot b { color: var(--text); }
+
+/* ---- 지금 적용 상태 표시줄 ---- */
+.status-strip {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 9px 20px; margin: 0;
+  background: var(--bg2); border-bottom: 1px solid var(--line);
+}
+.status-strip .ss-label { color: var(--muted); font-size: 12px; font-weight: 600; margin-right: 2px; }
+.ss-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 12px; border-radius: 20px;
+  background: var(--card); border: 1px solid var(--line2);
+  font-size: 12.5px; color: var(--muted);
+}
+.ss-chip b { color: var(--text); font-weight: 600; }
+.ss-chip em { font-style: normal; font-weight: 700; color: var(--muted); }
+.ss-chip .ss-dot { width: 9px; height: 9px; border-radius: 50%; background: #47506b; transition: background .15s, box-shadow .15s; }
+/* 켜짐/적용됨 = 초록 강조 */
+.ss-chip.on { border-color: rgba(56,211,154,.5); background: rgba(56,211,154,.10); }
+.ss-chip.on b { color: var(--text); }
+.ss-chip.on em { color: var(--green); }
+.ss-chip.on .ss-dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
