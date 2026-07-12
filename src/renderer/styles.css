@@ -640,3 +640,28 @@ body::before {
 .ss-chip.on b { color: var(--text); }
 .ss-chip.on em { color: var(--green); }
 .ss-chip.on .ss-dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+/* ---- 출력 카드 구분 (현장/온라인/무대) ---- */
+.out-card { position: relative; }
+.out-tag {
+  position: absolute; top: 9px; right: 9px;
+  font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+  background: var(--card2); color: var(--muted); border: 1px solid var(--line2);
+}
+.out-tag.live { background: rgba(255,71,87,.16); color: #ff6b78; border-color: rgba(255,71,87,.5); }
+.out-note { color: var(--muted); font-size: 11px; margin-top: 6px; opacity: .85; }
+/* 유튜브(온라인) 출력은 빨간 라이브 강조로 확실히 구분 */
+.out-card.out-live {
+  border-color: rgba(255,71,87,.4);
+  background: linear-gradient(180deg, rgba(255,71,87,.08), transparent 70%), var(--bg2);
+}
+.out-card.out-live.active { border-color: #ff6b78; box-shadow: 0 0 0 1px rgba(255,71,87,.3), 0 8px 22px -12px rgba(255,71,87,.5); background: rgba(255,71,87,.10); }
+
+/* ---- 방송 전용 컨트롤 묶음 ---- */
+.bc-group { margin: 0 16px 14px; border: 1px solid rgba(255,71,87,.3); border-radius: 12px; overflow: hidden; }
+.bc-group-head {
+  font-size: 12px; color: #ffb3ba; background: rgba(255,71,87,.10);
+  padding: 8px 13px; border-bottom: 1px solid rgba(255,71,87,.25);
+}
+.bc-group-head b { color: #ff8f99; }
+.bc-group .service-ctl { border-top: none; padding: 12px 13px; margin: 0; }

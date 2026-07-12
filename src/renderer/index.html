@@ -124,30 +124,38 @@
           <button id="serviceStartBtn" class="btn primary" disabled>▶ <span data-i18n="serviceStart">예배 시작</span></button>
         </div>
         <div class="outputs">
-          <div class="out-card" id="outMain">
+          <div class="out-card out-room" id="outMain">
+            <span class="out-tag">현장</span>
             <div class="out-top"><span class="out-ic">🔊</span><b>Main LR</b></div>
             <div class="out-sub" data-i18n="outMain">본당 스피커</div>
+            <div class="out-note">회중이 듣는 소리</div>
           </div>
-          <div class="out-card" id="outBroadcast">
+          <div class="out-card out-live" id="outBroadcast">
+            <span class="out-tag live">🔴 온라인</span>
             <div class="out-top"><span class="out-ic">📺</span><b>Bus 1</b></div>
             <div class="out-sub" data-i18n="outBroadcast">유튜브/방송</div>
             <div class="out-lufs"><span id="lufsVal">—</span> LUFS</div>
           </div>
-          <div class="out-card" id="outMonitor">
+          <div class="out-card out-stage" id="outMonitor">
+            <span class="out-tag">무대</span>
             <div class="out-top"><span class="out-ic">🎧</span><b>Bus 2</b></div>
             <div class="out-sub" data-i18n="outMonitor">찬양팀 모니터</div>
+            <div class="out-note">찬양팀이 듣는 소리</div>
           </div>
         </div>
-        <div class="service-ctl">
-          <label class="inline switch" title="유튜브 방송에서 설교 목소리를 키우고 컴프레서로 또렷하게 (작게 나가는 문제 해결)">
-            <input type="checkbox" id="voiceBoost" disabled /> 📢 <span data-i18n="voiceBoost">방송 목소리 키우기</span>
-          </label>
-          <label class="inline switch" title="설교 시 방송 버스에서 악기 레벨을 자동으로 낮춤">
-            <input type="checkbox" id="sermonMode" disabled /> 🎤 <span data-i18n="sermonMode">설교 모드(방송 악기 ↓)</span>
-          </label>
-          <label class="inline switch" title="방송 버스를 LUFS -14 기준으로 자동 레벨">
-            <input type="checkbox" id="loudnessMode" disabled /> 📊 <span data-i18n="loudnessMode">방송 자동 레벨 (LUFS −14)</span>
-          </label>
+        <div class="bc-group">
+          <div class="bc-group-head">📺 <b>유튜브 방송에만 영향</b> — 본당 스피커·모니터 소리는 그대로예요</div>
+          <div class="service-ctl">
+            <label class="inline switch" title="유튜브 방송에서 설교 목소리를 키우고 컴프레서로 또렷하게 (작게 나가는 문제 해결)">
+              <input type="checkbox" id="voiceBoost" disabled /> 📢 <span data-i18n="voiceBoost">방송 목소리 키우기</span>
+            </label>
+            <label class="inline switch" title="설교 시 방송 버스에서 악기 레벨을 자동으로 낮춤">
+              <input type="checkbox" id="sermonMode" disabled /> 🎤 <span data-i18n="sermonMode">설교 모드(방송 악기 ↓)</span>
+            </label>
+            <label class="inline switch" title="방송 버스를 LUFS -14 기준으로 자동 레벨">
+              <input type="checkbox" id="loudnessMode" disabled /> 📊 <span data-i18n="loudnessMode">방송 자동 레벨 (LUFS −14)</span>
+            </label>
+          </div>
         </div>
       </section>
 
