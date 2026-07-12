@@ -879,12 +879,36 @@ function showConnectedGuide() {
 function hideConnectedGuide() {
   if (connectedGuide) connectedGuide.classList.add('hidden');
 }
+// 초보용 원클릭: 채널 읽기 + 예배 세팅(3개 출력)까지 한 번에.
+async function autoPrepare() {
+  if (!connected) return;
+  const gnAuto = $('gnAuto');
+  if (gnAuto) { gnAuto.disabled = true; gnAuto.textContent = '⏳ 소리 맞추는 중…'; }
+  try {
+    showToast('채널을 읽고 예배 소리를 맞추는 중… 잠시만요.', 'ok');
+    await loadChannels();
+    await snapshotForUndo();
+    const n = await api.serviceStart();
+    ['outMain', 'outBroadcast', 'outMonitor'].forEach((id) => { const e = $(id); if (e) e.classList.add('active'); });
+    serviceApplied = true;
+    updateStatusStrip();
+    setTimeout(loadChannels, 400);
+    showToast(`✅ 예배 소리 준비 완료! (${n}개 설정) 이제 방송하셔도 돼요.`, 'ok');
+  } catch (err) {
+    showToast('자동 준비 실패: ' + errMsg(err), 'err');
+  } finally {
+    if (gnAuto) { gnAuto.disabled = false; gnAuto.textContent = '▶ 예배 소리 자동 맞추기'; }
+  }
+}
+
 {
   const gnClose = $('gnClose');
+  const gnAuto = $('gnAuto');
   const gnRead = $('gnRead');
   const gnService = $('gnService');
   const gnSave = $('gnSave');
   if (gnClose) gnClose.addEventListener('click', hideConnectedGuide);
+  if (gnAuto) gnAuto.addEventListener('click', autoPrepare);
   // 각 단계 버튼은 기존 동작 버튼을 그대로 실행
   if (gnRead) gnRead.addEventListener('click', () => { if (refreshBtn) refreshBtn.click(); });
   if (gnService) gnService.addEventListener('click', () => {
@@ -1730,10 +1754,10 @@ if (netHelp) netHelp.addEventListener('click', (e) => { if (e.target === netHelp
 
 // ---- 초기화 ----
 (async function init() {
-  // 언어 · 쉬운 모드 복원
+  // 언어 · 쉬운 모드 복원 (처음 쓰는 사람은 쉬운 모드가 기본)
   langSel.value = (I18N[lang] ? lang : 'ko');
-  let simple = false;
-  try { simple = localStorage.getItem('x32_simple') === '1'; } catch (_) { /* ignore */ }
+  let simple = true; // 저장된 설정이 없으면 초보 기준으로 쉬운 모드 ON
+  try { const v = localStorage.getItem('x32_simple'); if (v !== null) simple = v === '1'; } catch (_) { /* ignore */ }
   simpleMode.checked = simple;
   document.body.classList.toggle('simple', simple);
 

@@ -665,3 +665,36 @@ body::before {
 }
 .bc-group-head b { color: #ff8f99; }
 .bc-group .service-ctl { border-top: none; padding: 12px 13px; margin: 0; }
+
+/* ---- 초보용 히어로 버튼 (연결 후 안내) ---- */
+.gn-hero {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 12px; padding: 8px 6px 4px;
+}
+.gn-hero-btn {
+  font-size: 20px; font-weight: 800; padding: 18px 34px; border-radius: 14px;
+  width: 100%; max-width: 420px; letter-spacing: -.3px;
+}
+.gn-hero-txt { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+.gn-hero-txt b { color: var(--text); }
+.gn-hero-sub { color: var(--primary); font-weight: 700; }
+.gn-more { margin-top: 14px; }
+.gn-more > summary {
+  cursor: pointer; color: var(--muted); font-size: 12.5px; list-style: none;
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg2);
+  user-select: none;
+}
+.gn-more > summary::-webkit-details-marker { display: none; }
+.gn-more[open] > summary { color: var(--text); }
+.gn-more-body { display: flex; flex-direction: column; gap: 8px; padding: 12px 4px 2px; }
+.gn-mini { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* ---- 쉬운 모드: 초보에게 불필요한 툴바 버튼 숨김 (안전용만 남김) ---- */
+body.simple .toolbar #mixerBtn,
+body.simple .toolbar #backupBtn,
+body.simple .toolbar #restoreBtn,
+body.simple .toolbar #remoteBtn,
+body.simple .toolbar #mixerSaveBtn,
+body.simple .toolbar .tb-sep { display: none; }
+/* 쉬운 모드에선 Scene 템플릿(전문 프리셋)도 감춰 단순하게 */
+body.simple .scene { display: none; }
