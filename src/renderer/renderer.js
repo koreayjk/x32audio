@@ -47,6 +47,7 @@ function updateStatusStrip() {
   if (!connected) { strip.classList.add('hidden'); return; }
   strip.classList.remove('hidden');
   setChip('ssService', serviceApplied, '적용됨', '미적용');
+  setChip('ssVoice', $('voiceBoost') && $('voiceBoost').checked, '켜짐', '꺼짐');
   setChip('ssSermon', $('sermonMode') && $('sermonMode').checked, '켜짐', '꺼짐');
   setChip('ssLoud', $('loudnessMode') && $('loudnessMode').checked, '켜짐', '꺼짐');
   setChip('ssFeedback', feedbackOn, '켜짐', '꺼짐');
@@ -718,7 +719,7 @@ const I18N = {
     cueReset: '처음으로', saveState: '💾 현재 상태 저장', connected: '연결됨', notConnected: '연결 안 됨',
     serviceOps: '예배 운영 · 3개 출력', serviceStart: '예배 시작', outMain: '본당 스피커',
     outBroadcast: '유튜브/방송', outMonitor: '찬양팀 모니터',
-    sermonMode: '설교 모드(방송 악기 ↓)', loudnessMode: '방송 자동 레벨 (LUFS −14)',
+    sermonMode: '설교 모드(방송 악기 ↓)', loudnessMode: '방송 자동 레벨 (LUFS −14)', voiceBoost: '방송 목소리 키우기',
   },
   en: {
     mixerSelect: 'Mixer',
@@ -732,7 +733,7 @@ const I18N = {
     cueReset: 'Reset', saveState: '💾 Save current', connected: 'Connected', notConnected: 'Not connected',
     serviceOps: 'Service · 3 Outputs', serviceStart: 'Start Service', outMain: 'Main speakers',
     outBroadcast: 'YouTube/Stream', outMonitor: 'Worship monitor',
-    sermonMode: 'Sermon mode (duck inst.)', loudnessMode: 'Auto level (LUFS −14)',
+    sermonMode: 'Sermon mode (duck inst.)', loudnessMode: 'Auto level (LUFS −14)', voiceBoost: 'Boost broadcast voice',
   },
 };
 let lang = (() => { try { return localStorage.getItem('x32_lang') || 'ko'; } catch (_) { return 'ko'; } })();
@@ -1086,6 +1087,27 @@ serviceStartBtn.addEventListener('click', async () => {
   } catch (err) { showToast('적용 실패: ' + errMsg(err), 'err'); }
 });
 
+const voiceBoost = $('voiceBoost');
+voiceBoost.addEventListener('change', async () => {
+  try {
+    const r = await api.broadcastVoice(voiceBoost.checked);
+    updateStatusStrip();
+    if (voiceBoost.checked && r && r.speechCount === 0) {
+      voiceBoost.checked = false;
+      updateStatusStrip();
+      showToast('설교(speech) 역할 채널이 없어요. 채널 이름을 확인하거나 역할을 지정해 주세요.', 'err');
+      return;
+    }
+    showToast(voiceBoost.checked
+      ? `📢 방송 목소리 강조 ON — 설교 채널 ${r.speechCount}개를 키우고 컴프레서를 켰어요.`
+      : '방송 목소리 강조 OFF — 기본 레벨로 되돌리고 컴프레서를 껐어요.', 'ok');
+  } catch (err) {
+    showToast(errMsg(err), 'err');
+    voiceBoost.checked = !voiceBoost.checked;
+    updateStatusStrip();
+  }
+});
+
 sermonMode.addEventListener('change', async () => {
   try {
     await api.sermonDuck(sermonMode.checked);
@@ -1127,14 +1149,17 @@ api.on('loudness', (e) => {
   lufsVal.parentElement.classList.toggle('on-target', onTarget);
 });
 api.on('sermon-duck', (r) => { if (r) { sermonMode.checked = !!r.on; updateStatusStrip(); } });
+api.on('broadcast-voice', (r) => { if (r && voiceBoost) { voiceBoost.checked = !!r.on; updateStatusStrip(); } });
 
 function setServiceEnabled(on) {
   serviceStartBtn.disabled = !on;
   sermonMode.disabled = !on;
   loudnessMode.disabled = !on;
+  if (voiceBoost) voiceBoost.disabled = !on;
   if (!on) {
     sermonMode.checked = false;
     loudnessMode.checked = false;
+    if (voiceBoost) voiceBoost.checked = false;
     lufsVal.textContent = '—';
     lufsVal.parentElement.classList.remove('on-target');
     [outMain, outBroadcast, outMonitor].forEach((e) => e.classList.remove('active'));

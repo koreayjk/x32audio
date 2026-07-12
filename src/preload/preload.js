@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('x32api', {
   remoteSetCue: (items, index) => ipcRenderer.invoke('remote:set-cue', { items, index }),
   serviceStart: () => ipcRenderer.invoke('x32:service-start'),
   sermonDuck: (on, duckDb) => ipcRenderer.invoke('x32:sermon-duck', { on, duckDb }),
+  broadcastVoice: (on, opts) => ipcRenderer.invoke('x32:broadcast-voice', { on, opts }),
   loudnessStart: (options) => ipcRenderer.invoke('x32:loudness-start', options),
   loudnessStop: () => ipcRenderer.invoke('x32:loudness-stop'),
   getStatus: () => ipcRenderer.invoke('x32:status'),

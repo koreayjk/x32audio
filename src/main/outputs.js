@@ -40,6 +40,61 @@ const SERVICE_MIX = {
 /** 설교 시 방송 버스에서 악기를 낮추는 기본 감쇠량(dB). */
 const SERMON_DUCK_DB = -12;
 
+/**
+ * 방송(유튜브)에서 설교자 목소리가 작게 나가는 문제 해결 프리셋.
+ * 설교(speech) 채널에 대해:
+ *  - 방송 버스로 보내는 레벨을 기본보다 +boostDb 만큼 올림
+ *  - 컴프레서(목소리 균일화)를 켜서 작게 말할 때도 또렷하게, 메이크업 게인으로
+ *    전체 존재감을 끌어올림 → 유튜브에서 목소리가 파묻히지 않음
+ *
+ * X32 다이나믹스 정규화값(0~1) 및 열거 인덱스는 공식 OSC 매핑 기준.
+ *   thr  -22dB → (−22+60)/60 = 0.633
+ *   ratio 3:1 → 열거 인덱스 5 [1.1,1.3,1.5,2,2.5,3,4,5,7,10,20,100]
+ *   mgain +6dB → 6/24 = 0.25
+ *   att ~10ms(0..120) = 0.083, rel ~150ms(로그 5..4000) ≈ 0.51, knee 2/5 = 0.4
+ */
+const BROADCAST_VOICE = {
+  boostDb: 4,
+  comp: { mode: 0, det: 1, thr: 0.633, ratio: 5, mgain: 0.25, att: 0.083, rel: 0.51, knee: 0.4 },
+};
+
+/**
+ * 방송 설교 목소리 강조: speech 채널의 방송 버스 send 를 키우고 컴프레서를 켠다.
+ * @param {boolean} on  true=강조, false=원래(기본 send·컴프 off)로
+ * @returns {{actions:Array, speechCount:number}}
+ */
+function buildBroadcastVoiceBoost(channelMap, outputs = DEFAULT_OUTPUTS, on = true, opts = {}, _profile = DEFAULT_PROFILE) {
+  const bb = chId(outputs.broadcastBus);
+  const boostDb = opts.boostDb != null ? opts.boostDb : BROADCAST_VOICE.boostDb;
+  const c = BROADCAST_VOICE.comp;
+  const actions = [];
+  let speechCount = 0;
+  for (const entry of channelMap) {
+    if (entry.role !== 'speech') continue;
+    speechCount++;
+    const id = chId(entry.ch);
+    const base = `/ch/${id}`;
+    // 방송 버스 send 레벨 (기본 speech + boost, 끄면 기본으로)
+    const baseDb = SERVICE_MIX.broadcast.speech ?? 0;
+    const targetDb = on ? baseDb + boostDb : baseDb;
+    actions.push({ address: `${base}/mix/${bb}/on`, args: [i(1)] });
+    actions.push({ address: `${base}/mix/${bb}/level`, args: [f(dbToFader(targetDb))] });
+    // 컴프레서
+    actions.push({ address: `${base}/dyn/on`, args: [i(on ? 1 : 0)] });
+    if (on) {
+      actions.push({ address: `${base}/dyn/mode`, args: [i(c.mode)] });
+      actions.push({ address: `${base}/dyn/det`, args: [i(c.det)] });
+      actions.push({ address: `${base}/dyn/thr`, args: [f(c.thr)] });
+      actions.push({ address: `${base}/dyn/ratio`, args: [i(c.ratio)] });
+      actions.push({ address: `${base}/dyn/mgain`, args: [f(c.mgain)] });
+      actions.push({ address: `${base}/dyn/att`, args: [f(c.att)] });
+      actions.push({ address: `${base}/dyn/rel`, args: [f(c.rel)] });
+      actions.push({ address: `${base}/dyn/knee`, args: [f(c.knee)] });
+    }
+  }
+  return { actions, speechCount };
+}
+
 // 주소 프로파일 기본값(X32). X-Air 등은 어댑터가 다른 프로파일을 넘긴다.
 const DEFAULT_PROFILE = {
   main: { fader: '/main/st/mix/fader', on: '/main/st/mix/on' },
@@ -111,6 +166,8 @@ module.exports = {
   OUTPUT_LABELS,
   SERVICE_MIX,
   SERMON_DUCK_DB,
+  BROADCAST_VOICE,
   buildServiceStartActions,
   buildSermonBroadcastDuck,
+  buildBroadcastVoiceBoost,
 };

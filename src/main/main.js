@@ -86,6 +86,7 @@ function wireMixer(m) {
   m.on('param', (address, args) => send('x32:param', { address, args }));
   m.on('service-started', (r) => send('x32:service-started', r));
   m.on('sermon-duck', (r) => send('x32:sermon-duck', r));
+  m.on('broadcast-voice', (r) => send('x32:broadcast-voice', r));
   m.on('loudness', (r) => send('x32:loudness', r));
   m.on('channelmap', (map) => send('x32:channelmap', map));
 }
@@ -219,6 +220,10 @@ ipcMain.handle('x32:service-start', async () => x32.applyServiceStart());
 
 ipcMain.handle('x32:sermon-duck', async (_e, { on, duckDb }) => {
   return x32.setSermonBroadcastDuck(on, duckDb);
+});
+
+ipcMain.handle('x32:broadcast-voice', async (_e, { on, opts } = {}) => {
+  return x32.setBroadcastVoiceBoost(on, opts || {});
 });
 
 ipcMain.handle('x32:loudness-start', async (_e, options) => {

@@ -11,7 +11,7 @@ const {
   buildSceneActions, buildChannelMap, mergeChannelMap, DEFAULT_CHANNEL_MAP,
 } = require('./scenes');
 const {
-  DEFAULT_OUTPUTS, buildServiceStartActions, buildSermonBroadcastDuck,
+  DEFAULT_OUTPUTS, buildServiceStartActions, buildSermonBroadcastDuck, buildBroadcastVoiceBoost,
 } = require('./outputs');
 const util = require('./x32-util');
 
@@ -394,6 +394,20 @@ class X32Manager extends MixerAdapter {
     this.sermonDucked = !!on;
     this.emit('sermon-duck', { on: this.sermonDucked, count: actions.length });
     return actions.length;
+  }
+
+  /**
+   * 방송 설교 목소리 강조: 유튜브에서 설교 목소리가 작게 나가는 문제 해결.
+   * speech 채널의 방송 send 를 키우고 컴프레서를 켠다.
+   */
+  setBroadcastVoiceBoost(on, opts = {}) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    const { actions, speechCount } = buildBroadcastVoiceBoost(this.channelMap, this.outputs, !!on, opts, this.profile);
+    for (const a of actions) this.bus.send(a.address, a.args);
+    this.broadcastVoiceOn = !!on;
+    const r = { on: this.broadcastVoiceOn, count: actions.length, speechCount };
+    this.emit('broadcast-voice', r);
+    return r;
   }
 
   /** 방송 버스 LUFS 자동 레벨 시작 (기본 목표 -14 LUFS). */

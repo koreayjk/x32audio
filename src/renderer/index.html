@@ -67,6 +67,7 @@
   <div id="statusStrip" class="status-strip hidden">
     <span class="ss-label">지금 상태</span>
     <span class="ss-chip" id="ssService"><span class="ss-dot"></span><b>예배 세팅</b><em>미적용</em></span>
+    <span class="ss-chip" id="ssVoice"><span class="ss-dot"></span><b>방송 목소리</b><em>꺼짐</em></span>
     <span class="ss-chip" id="ssSermon"><span class="ss-dot"></span><b>설교 모드</b><em>꺼짐</em></span>
     <span class="ss-chip" id="ssLoud"><span class="ss-dot"></span><b>방송 자동레벨</b><em>꺼짐</em></span>
     <span class="ss-chip" id="ssFeedback"><span class="ss-dot"></span><b>피드백 감지</b><em>꺼짐</em></span>
@@ -138,6 +139,9 @@
           </div>
         </div>
         <div class="service-ctl">
+          <label class="inline switch" title="유튜브 방송에서 설교 목소리를 키우고 컴프레서로 또렷하게 (작게 나가는 문제 해결)">
+            <input type="checkbox" id="voiceBoost" disabled /> 📢 <span data-i18n="voiceBoost">방송 목소리 키우기</span>
+          </label>
           <label class="inline switch" title="설교 시 방송 버스에서 악기 레벨을 자동으로 낮춤">
             <input type="checkbox" id="sermonMode" disabled /> 🎤 <span data-i18n="sermonMode">설교 모드(방송 악기 ↓)</span>
           </label>
