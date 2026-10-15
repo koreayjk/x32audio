@@ -23,6 +23,7 @@
     "node-osc": "^11.6.0"
   },
   "devDependencies": {
+    "@electron/notarize": "^2.5.0",
     "electron": "^43.0.0",
     "electron-builder": "^26.0.0"
   },
@@ -50,12 +51,17 @@
       "shortcutName": "X32 교회 음향",
       "artifactName": "X32ChurchAudio-win.${ext}"
     },
+    "afterSign": "build/notarize.js",
     "mac": {
       "target": [
         "dmg"
       ],
       "category": "public.app-category.music",
       "artifactName": "X32ChurchAudio-mac-${arch}.${ext}",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
         "CFBundleDisplayName": "X32 교회 음향"
       }

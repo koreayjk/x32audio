@@ -39,10 +39,17 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - name: 빌드 (Intel + Apple Silicon 각각)
+      - name: 빌드 (Intel + Apple Silicon 각각) · 서명+공증은 시크릿 있을 때만
         run: npx electron-builder --mac --arm64 --x64 --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Developer ID 인증서(.p12 를 base64 로)와 비밀번호 — 있으면 진짜 서명
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          # Apple 공증용 자격증명 — 셋 다 있으면 공증까지 수행(경고 0)
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - uses: actions/upload-artifact@v4
         with:
           name: mac-dmg
