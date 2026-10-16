@@ -32,7 +32,9 @@ jobs:
 
   mac:
     name: macOS (.dmg · Intel / Apple Silicon)
-    runs-on: macos-latest
+    # macos-latest(현재 macOS 26)에서 electron-builder 의 set-key-partition-list
+    # 가 실패하는 사례가 있어, 서명·공증이 안정적인 macos-14 로 고정.
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
