@@ -68,13 +68,12 @@
     },
     "dmg": {
       "window": {
-        "width": 560,
-        "height": 420
+        "width": 540,
+        "height": 380
       },
       "contents": [
-        { "x": 150, "y": 180, "type": "file" },
-        { "x": 410, "y": 180, "type": "link", "path": "/Applications" },
-        { "x": 280, "y": 330, "type": "file", "path": "scripts/맥-처음실행-문제해결.command" }
+        { "x": 140, "y": 190, "type": "file" },
+        { "x": 400, "y": 190, "type": "link", "path": "/Applications" }
       ]
     }
   }
