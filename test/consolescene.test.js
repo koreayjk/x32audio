@@ -62,6 +62,22 @@ test('loadConsoleScene: /load "scene" idx 를 전송한다', async () => {
   }
 });
 
+test('saveToConsoleScene: 믹서가 Scene 질의에 응답 안 하면 저장하지 않고 중단 (기존 Scene 보호)', async () => {
+  const mock = new MockX32();
+  const port = await mock.start();
+  mock.ignoreSceneQueries = true; // 응답 없는 콘솔 흉내
+  const x32 = new X32Manager();
+  try {
+    await x32.connect('127.0.0.1', port);
+    await assert.rejects(() => x32.saveToConsoleScene({ name: 'X' }), /응답하지 않아/);
+    await new Promise((r) => setTimeout(r, 100));
+    assert.strictEqual(mock.get('/-show/showfile/scene/000/name'), undefined, '0번 Scene 을 덮어쓰지 않음');
+  } finally {
+    x32.disconnect();
+    mock.stop();
+  }
+});
+
 test('saveToConsoleScene: 미연결 시 에러', async () => {
   const x32 = new X32Manager();
   await assert.rejects(() => x32.saveToConsoleScene(), /연결/);

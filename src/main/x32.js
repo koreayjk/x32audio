@@ -11,7 +11,7 @@ const {
   buildSceneActions, buildChannelMap, mergeChannelMap, DEFAULT_CHANNEL_MAP,
 } = require('./scenes');
 const {
-  DEFAULT_OUTPUTS, buildServiceStartActions, buildSermonBroadcastDuck, buildBroadcastVoiceBoost,
+  DEFAULT_OUTPUTS, SERVICE_MIX, buildServiceStartActions, buildSermonBroadcastDuck, buildBroadcastVoiceBoost,
 } = require('./outputs');
 const util = require('./x32-util');
 
@@ -208,6 +208,8 @@ class X32Manager extends MixerAdapter {
     this.stopFeedback();
     this.stopBroadcastLoudness();
     this.sermonDucked = false;
+    this.broadcastVoiceOn = false;
+    this._voicePrior = null;
     this.autoSuppress = false;
     this.suppressor.reset();
     if (this.bus.isOpen) this.bus.close();
@@ -382,6 +384,13 @@ class X32Manager extends MixerAdapter {
     const actions = buildServiceStartActions(this.channelMap, this.outputs, this.profile);
     for (const a of actions) this.bus.send(a.address, a.args);
     this.sermonDucked = false;
+    // 방송 목소리 강조를 나중에 끌 때는 "예배 시작 기본값"으로 돌아가도록 기억값 갱신
+    if (this._voicePrior) {
+      const baseFader = util.dbToFader(SERVICE_MIX.broadcast.speech ?? 0);
+      for (const ch of this._voicePrior) {
+        for (const e of ch.entries) if (e[0] === ch.levelAddr) e[2] = baseFader;
+      }
+    }
     this.emit('service-started', { count: actions.length, outputs: this.outputs });
     return actions.length;
   }
@@ -400,14 +409,63 @@ class X32Manager extends MixerAdapter {
    * 방송 설교 목소리 강조: 유튜브에서 설교 목소리가 작게 나가는 문제 해결.
    * speech 채널의 방송 send 를 키우고 컴프레서를 켠다.
    */
-  setBroadcastVoiceBoost(on, opts = {}) {
+  async setBroadcastVoiceBoost(on, opts = {}) {
     if (!this.connected) throw new Error('연결되지 않았습니다.');
-    const { actions, speechCount } = buildBroadcastVoiceBoost(this.channelMap, this.outputs, !!on, opts, this.profile);
-    for (const a of actions) this.bus.send(a.address, a.args);
+    let count = 0;
+    let speechCount;
+    if (on) {
+      // 켜기 전에 설교 채널의 원래 값(방송 send·컴프레서)을 기억해 둔다.
+      // 이미 켜져 있으면 다시 읽지 않는다(강조된 값을 "원래 값"으로 착각하지 않도록).
+      if (!this._voicePrior) this._voicePrior = await this._readVoicePrior();
+      const r = buildBroadcastVoiceBoost(this.channelMap, this.outputs, true, opts, this.profile);
+      for (const a of r.actions) this.bus.send(a.address, a.args);
+      count = r.actions.length;
+      speechCount = r.speechCount;
+    } else if (this._voicePrior) {
+      // 끌 때는 기억해 둔 원래 값으로 그대로 복원 (원래 켜져 있던 컴프레서도 보존)
+      for (const ch of this._voicePrior) {
+        for (const [addr, type, value] of ch.entries) {
+          this.bus.send(addr, [type === 'i' ? util.i(value) : util.f(value)]);
+          count++;
+        }
+      }
+      speechCount = this._voicePrior.length;
+      this._voicePrior = null;
+    } else {
+      const r = buildBroadcastVoiceBoost(this.channelMap, this.outputs, false, opts, this.profile);
+      for (const a of r.actions) this.bus.send(a.address, a.args);
+      count = r.actions.length;
+      speechCount = r.speechCount;
+    }
     this.broadcastVoiceOn = !!on;
-    const r = { on: this.broadcastVoiceOn, count: actions.length, speechCount };
+    const r = { on: this.broadcastVoiceOn, count, speechCount };
     this.emit('broadcast-voice', r);
     return r;
+  }
+
+  /** 설교(speech) 채널의 방송 send·컴프레서 현재 값을 읽는다 (응답 없는 항목은 건너뜀). */
+  async _readVoicePrior() {
+    const bb = util.chId(this.outputs.broadcastBus);
+    const params = [
+      [`mix/${bb}/level`, 'f'], ['dyn/on', 'i'], ['dyn/mode', 'i'], ['dyn/det', 'i'],
+      ['dyn/thr', 'f'], ['dyn/ratio', 'i'], ['dyn/mgain', 'f'], ['dyn/att', 'f'],
+      ['dyn/rel', 'f'], ['dyn/knee', 'f'],
+    ];
+    const prior = [];
+    for (const c of this.channelMap) {
+      if (c.role !== 'speech') continue;
+      const base = `/ch/${util.chId(c.ch)}`;
+      const entries = [];
+      for (const [p, type] of params) {
+        const addr = `${base}/${p}`;
+        try {
+          const a = await this.bus.query(addr, 500);
+          if (typeof a[0] === 'number') entries.push([addr, type, a[0]]);
+        } catch (_e) { /* 응답 없으면 이 항목은 복원하지 않음 */ }
+      }
+      prior.push({ levelAddr: `${base}/mix/${bb}/level`, entries });
+    }
+    return prior;
   }
 
   /** 방송 버스 LUFS 자동 레벨 시작 (기본 목표 -14 LUFS). */
@@ -621,8 +679,14 @@ class X32Manager extends MixerAdapter {
   async findEmptyConsoleScene(max = 100) {
     for (let i = 0; i < max; i++) {
       const id = String(i).padStart(3, '0');
-      // hasdata=1 이면 사용 중. 응답이 없거나(미사용 슬롯) 0 이면 빈 슬롯.
-      const a = await this.bus.query(`/-show/showfile/scene/${id}/hasdata`, 300).catch(() => [0]);
+      // 콘솔은 빈 슬롯에도 hasdata=0 으로 응답한다. 응답이 없으면 빈 칸으로 단정하지
+      // 않고 중단한다 — 그렇지 않으면 기존 Scene 을 덮어쓸 위험이 있다.
+      let a;
+      try {
+        a = await this.bus.query(`/-show/showfile/scene/${id}/hasdata`, 800);
+      } catch (_e) {
+        throw new Error(`믹서가 Scene ${i}번 정보에 응답하지 않아 저장을 중단했습니다 (기존 Scene 보호). 연결 상태를 확인하고 다시 시도해 주세요.`);
+      }
       if (!(a[0] === 1 || a[0] === true)) return i;
     }
     return -1;

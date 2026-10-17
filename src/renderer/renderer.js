@@ -879,6 +879,20 @@ function showConnectedGuide() {
 function hideConnectedGuide() {
   if (connectedGuide) connectedGuide.classList.add('hidden');
 }
+// 예배 시작은 방송 send 를 기본값으로 되돌리므로, 켜져 있던 방송 토글
+// (방송 목소리·설교 모드)을 다시 적용해 화면 표시와 실제 소리를 일치시킨다.
+async function reapplyBroadcastToggles() {
+  try {
+    const vb = $('voiceBoost');
+    const sm = $('sermonMode');
+    if (vb && vb.checked) await api.broadcastVoice(true);
+    if (sm && sm.checked) await api.sermonDuck(true);
+  } catch (err) {
+    showToast('방송 설정 다시 적용 실패: ' + errMsg(err), 'err');
+  }
+  updateStatusStrip();
+}
+
 // 초보용 원클릭: 채널 읽기 + 예배 세팅(3개 출력)까지 한 번에.
 async function autoPrepare() {
   if (!connected) return;
@@ -891,7 +905,7 @@ async function autoPrepare() {
     const n = await api.serviceStart();
     ['outMain', 'outBroadcast', 'outMonitor'].forEach((id) => { const e = $(id); if (e) e.classList.add('active'); });
     serviceApplied = true;
-    updateStatusStrip();
+    await reapplyBroadcastToggles();
     setTimeout(loadChannels, 400);
     showToast(`✅ 예배 소리 준비 완료! (${n}개 설정) 이제 방송하셔도 돼요.`, 'ok');
   } catch (err) {
@@ -1105,7 +1119,7 @@ serviceStartBtn.addEventListener('click', async () => {
     const n = await api.serviceStart();
     [outMain, outBroadcast, outMonitor].forEach((e) => e.classList.add('active'));
     serviceApplied = true;
-    updateStatusStrip();
+    await reapplyBroadcastToggles();
     showToast(`예배 시작: 3개 출력 적용 (${n}개 명령 전송)`, 'ok');
     setTimeout(loadChannels, 300);
   } catch (err) { showToast('적용 실패: ' + errMsg(err), 'err'); }

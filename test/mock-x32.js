@@ -97,6 +97,8 @@ class MockX32 {
       this.params.set(addr, msg.slice(1)); // 설정
     } else if (this.params.has(addr)) {
       this._reply(addr, this.params.get(addr), rinfo); // 질의 → 저장값 응답
+    } else if (/^\/-show\/showfile\/scene\/\d{3}\/hasdata$/.test(addr) && !this.ignoreSceneQueries) {
+      this._reply(addr, [0], rinfo); // 실제 콘솔처럼 빈 Scene 슬롯은 hasdata=0 으로 응답
     }
   }
 

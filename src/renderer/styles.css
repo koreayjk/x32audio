@@ -696,5 +696,3 @@ body.simple .toolbar #restoreBtn,
 body.simple .toolbar #remoteBtn,
 body.simple .toolbar #mixerSaveBtn,
 body.simple .toolbar .tb-sep { display: none; }
-/* 쉬운 모드에선 Scene 템플릿(전문 프리셋)도 감춰 단순하게 */
-body.simple .scene { display: none; }

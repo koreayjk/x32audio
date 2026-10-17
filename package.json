@@ -23,7 +23,6 @@
     "node-osc": "^11.6.0"
   },
   "devDependencies": {
-    "@electron/notarize": "^2.5.0",
     "electron": "^43.0.0",
     "electron-builder": "^26.0.0"
   },
@@ -51,7 +50,6 @@
       "shortcutName": "X32 교회 음향",
       "artifactName": "X32ChurchAudio-win.${ext}"
     },
-    "afterSign": "build/notarize.js",
     "mac": {
       "target": [
         "dmg"
@@ -72,8 +70,17 @@
         "height": 380
       },
       "contents": [
-        { "x": 140, "y": 190, "type": "file" },
-        { "x": 400, "y": 190, "type": "link", "path": "/Applications" }
+        {
+          "x": 140,
+          "y": 190,
+          "type": "file"
+        },
+        {
+          "x": 400,
+          "y": 190,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     }
   }

@@ -51,3 +51,38 @@ test('speech 채널이 없으면 speechCount 0, 명령 없음', () => {
   assert.strictEqual(speechCount, 0);
   assert.strictEqual(actions.length, 0);
 });
+
+// 실 UDP: 켰다 끄면 엔지니어가 맞춰둔 원래 컴프레서·방송 레벨로 정확히 복원되는지
+const { MockX32 } = require('./mock-x32');
+const { X32Manager } = require('../src/main/x32');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const near = (a, b) => Math.abs(a - b) < 1e-4;
+
+test('방송 목소리: 켰다 끄면 원래 컴프레서·방송 레벨로 복원 (실 UDP)', async () => {
+  const mock = new MockX32();
+  const port = await mock.start();
+  const prior = {
+    '/ch/01/mix/01/level': 0.5, '/ch/01/dyn/on': 1, '/ch/01/dyn/mode': 0, '/ch/01/dyn/det': 0,
+    '/ch/01/dyn/thr': 0.4, '/ch/01/dyn/ratio': 3, '/ch/01/dyn/mgain': 0.1,
+    '/ch/01/dyn/att': 0.2, '/ch/01/dyn/rel': 0.3, '/ch/01/dyn/knee': 0.2,
+  };
+  for (const [a, v] of Object.entries(prior)) mock.set(a, [v]);
+  const x32 = new X32Manager();
+  try {
+    await x32.connect('127.0.0.1', port);
+    x32.channelMap = [{ ch: 1, name: '설교', role: 'speech' }];
+
+    await x32.setBroadcastVoiceBoost(true);
+    await sleep(100);
+    assert.ok(near(mock.get('/ch/01/dyn/thr')[0], BROADCAST_VOICE.comp.thr), '켜면 강조용 컴프 값 적용');
+
+    await x32.setBroadcastVoiceBoost(false);
+    await sleep(100);
+    for (const [a, v] of Object.entries(prior)) {
+      assert.ok(near(mock.get(a)[0], v), `${a} 원래 값(${v})으로 복원 — 실제 ${mock.get(a)[0]}`);
+    }
+  } finally {
+    x32.disconnect();
+    mock.stop();
+  }
+});

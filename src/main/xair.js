@@ -43,7 +43,12 @@ class XAirAdapter extends X32Manager {
   async findEmptyConsoleScene(max = 64) {
     for (let i = 1; i <= max; i++) {
       const id = String(i).padStart(2, '0');
-      const a = await this.bus.query(`/-snap/${id}/name`, 300).catch(() => ['']);
+      let a;
+      try {
+        a = await this.bus.query(`/-snap/${id}/name`, 800);
+      } catch (_e) {
+        throw new Error(`믹서가 스냅샷 ${i}번 정보에 응답하지 않아 저장을 중단했습니다 (기존 스냅샷 보호).`);
+      }
       const name = typeof a[0] === 'string' ? a[0].trim() : '';
       if (!name) return i;
     }
