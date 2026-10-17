@@ -38,6 +38,8 @@ contextBridge.exposeInMainWorld('x32api', {
   serviceStart: () => ipcRenderer.invoke('x32:service-start'),
   sermonDuck: (on, duckDb) => ipcRenderer.invoke('x32:sermon-duck', { on, duckDb }),
   broadcastVoice: (on, opts) => ipcRenderer.invoke('x32:broadcast-voice', { on, opts }),
+  soundcheckStart: (opts) => ipcRenderer.invoke('x32:soundcheck-start', opts),
+  soundcheckStop: () => ipcRenderer.invoke('x32:soundcheck-stop'),
   loudnessStart: (options) => ipcRenderer.invoke('x32:loudness-start', options),
   loudnessStop: () => ipcRenderer.invoke('x32:loudness-stop'),
   getStatus: () => ipcRenderer.invoke('x32:status'),

@@ -14,6 +14,7 @@ const {
   DEFAULT_OUTPUTS, SERVICE_MIX, buildServiceStartActions, buildSermonBroadcastDuck, buildBroadcastVoiceBoost,
 } = require('./outputs');
 const util = require('./x32-util');
+const { SoundcheckSession } = require('./soundcheck');
 
 const KEEPALIVE_MS = 8000;       // /xremote, 미터 재구독 주기 (X32 구독은 10초 후 만료)
 const LOUDNESS_FRAMES_PER_TICK = 40;     // 약 2초마다 보정 (미터 ~50ms 가정)
@@ -28,6 +29,8 @@ const X32_PROFILE = {
   channelCount: 32,
   feedbackBank: '/meters/15',          // RTA (피드백)
   loudnessBank: '/meters/5',           // 믹스 버스 미터 (방송 LUFS)
+  channelBank: '/meters/1',            // 입력 채널 레벨 미터 (자동 사운드체크) — 앞 32개가 CH1~32
+  channelMeterPostFader: false,        // 채널 미터가 페이더 "앞"(pre)이라고 가정
   main: { fader: '/main/st/mix/fader', on: '/main/st/mix/on' },
   busPrefix: (bus) => `/bus/${util.chId(bus)}`, // /bus/01 .. /bus/16
 };
@@ -207,6 +210,7 @@ class X32Manager extends MixerAdapter {
     this._stopKeepAlive();
     this.stopFeedback();
     this.stopBroadcastLoudness();
+    this.stopSoundcheck();
     this.sermonDucked = false;
     this.broadcastVoiceOn = false;
     this._voicePrior = null;
@@ -325,6 +329,8 @@ class X32Manager extends MixerAdapter {
     // /subscribe ,si "<bank>" <timefactor>  → X32 가 주기적으로 블롭 전송 (10초 후 만료)
     for (const bank of this._meterHandlers.keys()) {
       this.bus.send('/subscribe', [util.s(bank), util.i(1)]);
+      // 문서화된 미터 요청(/meters)도 함께 보낸다 — 콘솔이 둘 중 하나만 이해해도 미터가 오도록.
+      this.bus.send('/meters', [util.s(bank)]);
     }
   }
 
@@ -504,6 +510,55 @@ class X32Manager extends MixerAdapter {
       }
     });
     return true;
+  }
+
+  // ---- 자동 사운드체크 ----
+
+  /**
+   * 리허설/예배 전 악기를 한 명씩 소리 낼 때, 어느 채널인지 찾아 페이더를 목표 음량으로 맞춘다.
+   * (페이더만 조정 — 프리앰프 게인은 건드리지 않는다.)
+   */
+  startSoundcheck(opts = {}) {
+    if (!this.connected) throw new Error('연결되지 않았습니다.');
+    if (!this.profile.channelBank) {
+      throw new Error('이 믹서는 아직 자동 사운드체크를 지원하지 않아요 (X32/M32 전용).');
+    }
+    this.stopSoundcheck();
+    const channels = this.channelMap.filter((c) => c.ch >= 1 && c.ch <= this.profile.channelCount);
+    const addr = (ch, p) => `/ch/${util.chId(ch)}/${p}`;
+    const io = {
+      getFader: async (ch) => {
+        try { const a = await this.bus.query(addr(ch, 'mix/fader'), 800); return typeof a[0] === 'number' ? a[0] : null; }
+        catch (_e) { return null; }
+      },
+      isOn: async (ch) => {
+        try { const a = await this.bus.query(addr(ch, 'mix/on'), 800); return a[0] === 1 || a[0] === true; }
+        catch (_e) { return null; } // 모르면 막지 않고 진행
+      },
+      setFader: (ch, v) => this.bus.send(addr(ch, 'mix/fader'), [util.f(v)]),
+    };
+    const session = new SoundcheckSession({
+      channels, io,
+      emit: (snap) => this.emit('soundcheck', snap),
+      options: { meterPostFader: !!this.profile.channelMeterPostFader, ...opts },
+    });
+    this._soundcheck = session;
+    this._scTimer = setInterval(() => session.checkStale(), 1000);
+    this._addMeterBank(this.profile.channelBank, (raw) => {
+      // 값이 dB(음수)로 오든 선형(0..1)으로 오든 선형으로 통일
+      session.push(raw.map((v) => (v < 0 ? Math.pow(10, v / 20) : v)));
+    });
+    session.start();
+    return true;
+  }
+
+  stopSoundcheck() {
+    if (this._scTimer) { clearInterval(this._scTimer); this._scTimer = null; }
+    if (!this._soundcheck) return null;
+    if (this.profile.channelBank) this._removeMeterBank(this.profile.channelBank);
+    const summary = this._soundcheck.stop();
+    this._soundcheck = null;
+    return summary;
   }
 
   stopBroadcastLoudness() {

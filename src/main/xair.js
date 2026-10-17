@@ -24,6 +24,7 @@ const XAIR_PROFILE = {
   channelCount: 16,
   feedbackBank: '/meters/15',
   loudnessBank: '/meters/5',
+  channelBank: null, // 자동 사운드체크 미지원(채널 미터 구조 미확인)
   main: { fader: '/lr/mix/fader', on: '/lr/mix/on' },
   busPrefix: (bus) => `/bus/${bus}`, // X-Air: 1자리 (/bus/1 .. /bus/6)
 };

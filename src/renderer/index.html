@@ -68,6 +68,7 @@
     <span class="ss-label">지금 상태</span>
     <span class="ss-chip" id="ssService"><span class="ss-dot"></span><b>예배 세팅</b><em>미적용</em></span>
     <span class="ss-chip" id="ssVoice"><span class="ss-dot"></span><b>방송 목소리</b><em>꺼짐</em></span>
+    <span class="ss-chip" id="ssSound"><span class="ss-dot"></span><b>사운드체크</b><em>꺼짐</em></span>
     <span class="ss-chip" id="ssSermon"><span class="ss-dot"></span><b>설교 모드</b><em>꺼짐</em></span>
     <span class="ss-chip" id="ssLoud"><span class="ss-dot"></span><b>방송 자동레벨</b><em>꺼짐</em></span>
     <span class="ss-chip" id="ssFeedback"><span class="ss-dot"></span><b>피드백 감지</b><em>꺼짐</em></span>
@@ -87,7 +88,8 @@
           <p class="gn-hero-txt">
             음향을 전혀 몰라도 괜찮아요. <b>이 버튼 하나</b>면 채널을 읽고<br />
             본당 스피커·유튜브 방송·찬양팀 모니터를 <b>알아서 잡아줍니다.</b><br />
-            <span class="gn-hero-sub">누른 다음 방송을 시작하시면 돼요.</span>
+            <span class="gn-hero-sub">누른 다음 방송을 시작하시면 돼요.</span><br />
+            <span class="gn-hero-next">다음 단계 👉 아래 <b>🎧 자동 사운드체크</b>에서 악기를 한 명씩 소리 내 주세요.</span>
           </p>
         </div>
         <details class="gn-more">
@@ -149,6 +151,22 @@
               <input type="checkbox" id="loudnessMode" disabled /> 📊 <span data-i18n="loudnessMode">방송 자동 레벨 (LUFS −14)</span>
             </label>
           </div>
+        </div>
+      </section>
+
+      <!-- 자동 사운드체크 -->
+      <section class="card soundcheck" id="soundcheckCard">
+        <div class="card-head">
+          <h2>🎧 자동 사운드체크 <span class="beta-tag">베타</span></h2>
+          <button id="scBtn" class="btn primary" disabled>▶ 사운드체크 시작</button>
+        </div>
+        <div class="sc-body">
+          <p class="sc-help">시작을 누른 뒤 <b>악기를 한 명씩 연주</b>하거나 <b>마이크에 말해</b> 주세요.
+            앱이 어느 채널인지 찾아 <b>음량(페이더)</b>을 알맞게 맞춰줘요.
+            <span class="sc-safe">마이크 입력 게인은 건드리지 않고, 되돌리기·원본 복구로 언제든 되돌릴 수 있어요.</span></p>
+          <div id="scStatus" class="sc-status">연결 후 시작 버튼을 눌러 주세요.</div>
+          <div class="sc-bar"><span id="scBarFill"></span></div>
+          <div id="scChips" class="sc-chips"></div>
         </div>
       </section>
 

@@ -32,6 +32,7 @@ let connected = false;
 let feedbackOn = false;
 let lastHost = null;
 let serviceApplied = false; // "예배 시작" 프리셋을 이번 세션에 적용했는지
+let soundcheckOn = false;     // 자동 사운드체크 진행 중인지
 
 // ---- 지금 적용 상태 표시줄 ----
 function setChip(id, on, onText, offText) {
@@ -47,6 +48,7 @@ function updateStatusStrip() {
   if (!connected) { strip.classList.add('hidden'); return; }
   strip.classList.remove('hidden');
   setChip('ssService', serviceApplied, '적용됨', '미적용');
+  setChip('ssSound', soundcheckOn, '켜짐', '꺼짐');
   setChip('ssVoice', $('voiceBoost') && $('voiceBoost').checked, '켜짐', '꺼짐');
   setChip('ssSermon', $('sermonMode') && $('sermonMode').checked, '켜짐', '꺼짐');
   setChip('ssLoud', $('loudnessMode') && $('loudnessMode').checked, '켜짐', '꺼짐');
@@ -879,6 +881,72 @@ function showConnectedGuide() {
 function hideConnectedGuide() {
   if (connectedGuide) connectedGuide.classList.add('hidden');
 }
+// ---- 자동 사운드체크 ----
+const SC_STATUS_ICON = { waiting: '', measuring: '🎤', done: '✓', limit: '⚠', muted: '🔇', error: '⚠' };
+
+function fmtDb(v) { return v == null ? '' : `${v > 0 ? '+' : ''}${v}dB`; }
+
+function renderSoundcheck(snap) {
+  const st = $('scStatus'); const fill = $('scBarFill'); const chips = $('scChips');
+  if (!st || !snap) return;
+  st.textContent = snap.message || '';
+  st.className = 'sc-status' + (snap.state === 'measuring' ? ' measuring'
+    : snap.state === 'settled' ? ' settled' : '')
+    + ((snap.state === 'nodata' || (snap.message || '').startsWith('⚠') || (snap.message || '').startsWith('🔇')) ? ' warn' : '');
+  if (fill) fill.style.width = `${Math.round((snap.progress || 0) * 100)}%`;
+  // 소리가 감지됐거나 처리된 채널만 칩으로 보여준다 (아직 소리 안 낸 채널은 숨김)
+  const shown = (snap.channels || []).filter((c) => c.status !== 'waiting');
+  chips.innerHTML = shown.map((c) => {
+    const detail = c.status === 'done' ? `${fmtDb(c.startFaderDb)} → ${fmtDb(c.faderDb)}`
+      : c.status === 'limit' ? (c.limit === 'low' ? '너무 큼' : '너무 작음')
+      : c.status === 'muted' ? '음소거' : c.status === 'measuring' ? '맞추는 중' : '';
+    return `<span class="sc-chip ${c.status}">${SC_STATUS_ICON[c.status] || ''} <b>${esc(c.name)}</b>` +
+      (detail ? ` <em>${esc(detail)}</em>` : '') + '</span>';
+  }).join('');
+}
+
+function resetSoundcheckUi() {
+  soundcheckOn = false;
+  const b = $('scBtn');
+  if (b) b.textContent = '▶ 사운드체크 시작';
+  const st = $('scStatus'); if (st) { st.textContent = '연결 후 시작 버튼을 눌러 주세요.'; st.className = 'sc-status'; }
+  const fill = $('scBarFill'); if (fill) fill.style.width = '0';
+  const chips = $('scChips'); if (chips) chips.innerHTML = '';
+}
+
+async function toggleSoundcheck() {
+  if (!connected) return;
+  const b = $('scBtn');
+  b.disabled = true;
+  try {
+    if (soundcheckOn) {
+      const sum = await api.soundcheckStop();
+      soundcheckOn = false;
+      b.textContent = '▶ 사운드체크 시작';
+      const n = sum ? sum.done : 0;
+      showToast(n > 0 ? `✅ 사운드체크 끝 — ${n}개 채널 음량을 맞췄어요. (되돌리기로 취소 가능)` : '사운드체크를 끝냈어요.', 'ok');
+      setTimeout(loadChannels, 300);
+    } else {
+      await snapshotForUndo();
+      await api.soundcheckStart();
+      soundcheckOn = true;
+      b.textContent = '■ 사운드체크 끝내기';
+      showToast('🎧 사운드체크 시작 — 악기를 한 명씩 소리 내 주세요.', 'ok');
+    }
+  } catch (err) {
+    showToast('사운드체크: ' + errMsg(err), 'err');
+  } finally {
+    b.disabled = !connected;
+    updateStatusStrip();
+  }
+}
+
+{
+  const scBtn = $('scBtn');
+  if (scBtn) scBtn.addEventListener('click', toggleSoundcheck);
+  api.on('soundcheck', (snap) => { if (soundcheckOn || (snap && snap.summary)) renderSoundcheck(snap); });
+}
+
 // 예배 시작은 방송 send 를 기본값으로 되돌리므로, 켜져 있던 방송 토글
 // (방송 목소리·설교 모드)을 다시 적용해 화면 표시와 실제 소리를 일치시킨다.
 async function reapplyBroadcastToggles() {
@@ -1195,7 +1263,9 @@ function setServiceEnabled(on) {
   sermonMode.disabled = !on;
   loudnessMode.disabled = !on;
   if (voiceBoost) voiceBoost.disabled = !on;
+  const scb = $('scBtn'); if (scb) scb.disabled = !on;
   if (!on) {
+    resetSoundcheckUi();
     sermonMode.checked = false;
     loudnessMode.checked = false;
     if (voiceBoost) voiceBoost.checked = false;

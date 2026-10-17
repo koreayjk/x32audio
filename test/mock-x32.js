@@ -76,7 +76,7 @@ class MockX32 {
     const addr = msg[0];
     if (addr === '/xremote' || addr === '/renew' || addr === '/unsubscribe') return;
 
-    if (addr === '/subscribe') {
+    if (addr === '/subscribe' || addr === '/meters') {
       const bank = msg[1];
       this._meterTarget = { addr: bank, port: rinfo.port, address: rinfo.address };
       this._startMeters();
