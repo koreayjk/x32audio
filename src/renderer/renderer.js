@@ -1086,7 +1086,8 @@ async function renderRemote() {
     remoteBody.innerHTML =
       '<p>같은 와이파이의 태블릿/폰 브라우저에서 아래 주소를 여세요:</p>' +
       st.info.urls.map((u) => `<div class="url">${esc(u)}</div>`).join('') +
-      '<p class="hint">기기에서 큰 버튼으로 Scene을 전환할 수 있습니다.</p>' +
+      (st.info.pin ? `<div class="pin-box">🔒 접속 PIN <b>${esc(st.info.pin)}</b></div>` : '') +
+      '<p class="hint">처음 접속할 때 위 PIN 4자리를 입력해야 조작할 수 있어요 (같은 와이파이의 다른 사람은 조작 불가). 서버를 다시 켜면 PIN이 바뀝니다.</p>' +
       '<button id="remoteToggle" class="btn danger">서버 중지</button>';
   } else {
     remoteBody.innerHTML =

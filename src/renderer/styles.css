@@ -696,3 +696,13 @@ body.simple .toolbar #restoreBtn,
 body.simple .toolbar #remoteBtn,
 body.simple .toolbar #mixerSaveBtn,
 body.simple .toolbar .tb-sep { display: none; }
+/* ---- 원격 조작 PIN ---- */
+.remote-body .pin-box {
+  margin: 12px 0 4px; padding: 12px 14px; border-radius: 10px;
+  background: rgba(91,140,255,.12); border: 1px solid rgba(91,140,255,.45);
+  font-size: 14px; color: var(--muted);
+}
+.remote-body .pin-box b {
+  margin-left: 8px; font-size: 26px; letter-spacing: 6px; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}

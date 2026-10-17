@@ -10,7 +10,10 @@ const { RemoteServer } = require('../src/main/remote-server');
 const { listScenes } = require('../src/main/scenes');
 const { dbToFader, faderToDb } = require('../src/main/x32-util');
 
+const TEST_PIN = '1234'; // 원격 서버 PIN (테스트용 고정값)
 function httpReq(opts, body) {
+  // 기본적으로 PIN 헤더를 붙인다. noPin:true 면 생략, headers 로 덮어쓰기 가능.
+  if (!opts.noPin) opts = { ...opts, headers: { 'X-Remote-Pin': TEST_PIN, ...(opts.headers || {}) } };
   return new Promise((resolve, reject) => {
     const req = http.request(opts, (res) => {
       let data = '';
@@ -74,7 +77,7 @@ test('원격 큐: next 로 장면 적용, all-mute 동작 (실 HTTP+UDP)', async
 
   try {
     await x32.connect('127.0.0.1', mport);
-    const { port } = await remote.start(0);
+    const { port } = await remote.start(0, { pin: TEST_PIN });
 
     // 큐 상태 조회
     let cue = JSON.parse((await httpReq({ host: '127.0.0.1', port, path: '/api/cue', method: 'GET' })).body);
@@ -114,7 +117,7 @@ test('원격 큐: 미연결 시 next 거부(409)', async () => {
     allMute: () => 0,
   });
   try {
-    const { port } = await remote.start(0);
+    const { port } = await remote.start(0, { pin: TEST_PIN });
     const r = await httpReq({ host: '127.0.0.1', port, path: '/api/cue/next', method: 'POST' }, '{}');
     assert.strictEqual(r.status, 409);
   } finally {

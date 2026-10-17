@@ -64,7 +64,10 @@ test('실시간 동기화: 콘솔 파라미터 푸시를 param 이벤트로 수�
 });
 
 // ---- 원격 서버 ----
+const TEST_PIN = '1234'; // 원격 서버 PIN (테스트용 고정값)
 function httpReq(opts, body) {
+  // 기본적으로 PIN 헤더를 붙인다. noPin:true 면 생략, headers 로 덮어쓰기 가능.
+  if (!opts.noPin) opts = { ...opts, headers: { 'X-Remote-Pin': TEST_PIN, ...(opts.headers || {}) } };
   return new Promise((resolve, reject) => {
     const req = http.request(opts, (res) => {
       let data = '';
@@ -87,7 +90,7 @@ test('원격 서버: 페이지/상태/Scene API 동작 (실 HTTP)', async () => 
   });
   try {
     await x32.connect('127.0.0.1', mport);
-    const { port } = await remote.start(0); // 임의 포트
+    const { port } = await remote.start(0, { pin: TEST_PIN }); // 임의 포트
 
     // 페이지
     const page = await httpReq({ host: '127.0.0.1', port, path: '/', method: 'GET' });
@@ -125,7 +128,7 @@ test('원격 서버: 미연결 시 Scene 적용 거부(409)', async () => {
     getStatus: () => ({ connected: x32.connected, info: x32.info }),
   });
   try {
-    const { port } = await remote.start(0);
+    const { port } = await remote.start(0, { pin: TEST_PIN });
     const apply = await httpReq(
       { host: '127.0.0.1', port, path: '/api/scene', method: 'POST', headers: { 'Content-Type': 'application/json' } },
       JSON.stringify({ id: 'sermon' }),
@@ -134,4 +137,54 @@ test('원격 서버: 미연결 시 Scene 적용 거부(409)', async () => {
   } finally {
     await remote.stop();
   }
+});
+
+test('원격 서버: PIN 없거나 틀리면 401, 페이지는 PIN 없이 열림', async () => {
+  const remote = new RemoteServer({
+    getScenes: () => listScenes(),
+    applyScene: () => 0,
+    getStatus: () => ({ connected: true, info: null }),
+  });
+  try {
+    const { port, pin } = await remote.start(0, { pin: TEST_PIN });
+    assert.strictEqual(pin, TEST_PIN, 'info() 에 PIN 포함');
+    const page = await httpReq({ host: '127.0.0.1', port, path: '/', method: 'GET', noPin: true });
+    assert.strictEqual(page.status, 200, '페이지 자체는 PIN 없이 열림(입력 화면 표시용)');
+    const none = await httpReq({ host: '127.0.0.1', port, path: '/api/scenes', method: 'GET', noPin: true });
+    assert.strictEqual(none.status, 401, 'PIN 없음 → 401');
+    const wrong = await httpReq({ host: '127.0.0.1', port, path: '/api/mute', method: 'POST', headers: { 'X-Remote-Pin': '9999' } });
+    assert.strictEqual(wrong.status, 401, '틀린 PIN → 401');
+  } finally {
+    await remote.stop();
+  }
+});
+
+test('원격 서버: PIN 5회 틀리면 잠금(429) — 맞는 PIN 도 잠시 거부', async () => {
+  const remote = new RemoteServer({
+    getScenes: () => listScenes(),
+    applyScene: () => 0,
+    getStatus: () => ({ connected: true, info: null }),
+  });
+  try {
+    const { port } = await remote.start(0, { pin: TEST_PIN });
+    for (let k = 0; k < 5; k++) {
+      const r = await httpReq({ host: '127.0.0.1', port, path: '/api/status', method: 'GET', headers: { 'X-Remote-Pin': '0000' } });
+      assert.strictEqual(r.status, 401);
+    }
+    const locked = await httpReq({ host: '127.0.0.1', port, path: '/api/status', method: 'GET' });
+    assert.strictEqual(locked.status, 429, '5회 실패 후엔 맞는 PIN 도 잠금');
+  } finally {
+    await remote.stop();
+  }
+});
+
+test('원격 서버: 시작할 때마다 4자리 숫자 PIN 생성', async () => {
+  const remote = new RemoteServer({ getScenes: () => [], applyScene: () => 0, getStatus: () => ({ connected: false }) });
+  try {
+    const { pin } = await remote.start(0);
+    assert.match(pin, /^\d{4}$/);
+  } finally {
+    await remote.stop();
+  }
+  assert.strictEqual(remote.pin, null, '중지하면 PIN 폐기');
 });
