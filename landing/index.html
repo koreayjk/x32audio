@@ -3,162 +3,206 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#14171f" />
   <title>X32 교회 음향 | 음향을 처음 맡아도 막히지 않게</title>
   <meta name="description" content="Behringer X32·M32 믹서를 컴퓨터에서 쉽게 다루는 무료 앱. 예배 장면 전환, 유튜브 방송 소리 조절, 악기별 자동 사운드체크, 하울링 억제. Windows와 Mac에서 쓸 수 있어요." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="X32 교회 음향" />
+  <meta property="og:description" content="음향을 처음 맡아도 막히지 않게. Behringer X32·M32 믹서용 무료 앱." />
+  <meta property="og:url" content="https://koreayjk.github.io/x32audio/" />
+  <meta property="og:image" content="https://koreayjk.github.io/x32audio/landing/assets/screenshot.png" />
   <style>
     :root {
-      --bg: #14171f; --bg2: #1b1f2a; --line: #333a52;
+      color-scheme: dark;
+      --bg: #14171f; --line: #333a52;
       --text: #eef1f8; --muted: #a3abc2;
-      --accent: #3b66e8; --accent-text: #8fb0ff;
-      --radius: 12px;
+      --accent: #3b66e8; --accent-hover: #4a74f0; --accent-text: #8fb0ff;
+      --scrim-a: rgba(16,18,26,.9); --scrim-b: rgba(16,18,26,.94);
+      --radius: .75rem;
+      --ease-out: cubic-bezier(.16, 1, .3, 1);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; scroll-padding-top: 5rem; -webkit-text-size-adjust: 100%; }
     body {
       background: var(--bg); color: var(--text); line-height: 1.7; word-break: keep-all;
       font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      accent-color: var(--accent); scrollbar-color: #3a4260 var(--bg);
     }
+    ::selection { background: rgba(59,102,232,.5); color: #fff; }
+    h1, h2, h3 { text-wrap: balance; }
+    p { text-wrap: pretty; }
     a { color: inherit; text-decoration: none; }
-    a:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
-    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    a:focus-visible, .btn:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; border-radius: .25rem; }
+    .wrap { max-width: 67.5rem; margin: 0 auto; padding: 0 1.5rem; }
+
+    .skip {
+      position: absolute; left: 1rem; top: -4rem; z-index: 20; padding: .6rem 1rem;
+      background: var(--accent); color: #fff; border-radius: var(--radius); font-weight: 600;
+    }
+    .skip:focus { top: 1rem; }
 
     .btn {
-      display: inline-block; white-space: nowrap; padding: 13px 24px; border-radius: var(--radius);
-      font-weight: 600; font-size: 15px; border: 1px solid transparent;
-      transition: transform .12s, background .15s, border-color .15s;
+      display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem;
+      white-space: nowrap; padding: .6rem 1.5rem; border-radius: var(--radius);
+      font-weight: 600; font-size: .9375rem; border: 1px solid transparent;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      transition: transform 100ms ease-out, background .15s, border-color .15s;
     }
     .btn:hover { transform: translateY(-2px); }
-    .btn:active { transform: translateY(0); }
+    .btn:active { transform: scale(.97); }
     .btn.primary { background: var(--accent); color: #fff; }
-    .btn.primary:hover { background: #4a74f0; }
+    .btn.primary:hover { background: var(--accent-hover); }
     .btn.ghost { border-color: var(--line); color: var(--text); }
     .btn.ghost:hover { border-color: #5a6590; }
 
-    /* 위쪽 메뉴 */
+    /* 위쪽 메뉴: 반투명 */
     nav {
-      position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px);
-      background: rgba(20,23,31,.85); border-bottom: 1px solid var(--line);
+      position: sticky; top: 0; z-index: 10;
+      backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%);
+      background: rgba(20,23,31,.82); border-bottom: 1px solid var(--line);
     }
-    nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-    .logo { font-weight: 800; font-size: 17px; letter-spacing: -.3px; }
-    nav .links { display: flex; gap: 28px; font-size: 14px; color: var(--muted); }
+    nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 4rem; }
+    .logo { font-weight: 800; font-size: 1.0625rem; letter-spacing: -.01em; }
+    nav .links { display: flex; gap: 1.75rem; font-size: .875rem; color: var(--muted); }
+    nav .links a { padding: .5rem 0; }
     nav .links a:hover { color: var(--text); }
-    nav .btn { padding: 9px 18px; font-size: 14px; }
+    nav .btn { padding: .4rem 1.1rem; font-size: .875rem; }
 
     /* 첫 화면 */
     .hero {
-      padding: 88px 0 56px;
+      padding: 5.5rem 0 3.5rem;
       background:
         linear-gradient(180deg, rgba(16,18,26,.84), rgba(16,18,26,.94)),
         url("assets/bg/hero.jpg") center/cover no-repeat;
     }
-    .hero .kicker { color: var(--accent-text); font-size: 14px; font-weight: 600; margin-bottom: 16px; }
-    .hero h1 { font-size: 52px; line-height: 1.22; letter-spacing: -1.2px; max-width: 760px; }
-    .hero .lead { font-size: 18px; color: var(--muted); margin: 22px 0 34px; max-width: 600px; }
-    .hero .cta { display: flex; gap: 12px; flex-wrap: wrap; }
-    .shot { margin-top: 64px; }
+    .hero h1 {
+      font-size: clamp(2.25rem, 1.2rem + 3.6vw, 3.25rem); line-height: 1.2;
+      letter-spacing: -.024em; max-width: 47rem;
+    }
+    .hero .lead { font-size: 1.125rem; color: var(--muted); margin: 1.5rem 0 2.25rem; max-width: 36rem; }
+    .hero .cta { display: flex; gap: .75rem; flex-wrap: wrap; }
+    .shot { margin-top: 4rem; animation: rise .8s var(--ease-out) both; }
     .shot img {
       display: block; width: 100%; height: auto; border-radius: var(--radius);
-      border: 1px solid var(--line); box-shadow: 0 30px 70px rgba(0,0,0,.45);
+      border: 1px solid var(--line); box-shadow: 0 1.5rem 4rem rgba(0,0,0,.45);
     }
-    .shot figcaption { margin-top: 12px; font-size: 13px; color: var(--muted); }
+    .shot figcaption { margin-top: .75rem; font-size: .8125rem; color: var(--muted); }
+    @keyframes rise { from { opacity: 0; transform: translateY(1rem); } }
 
-    section { padding: 88px 0; }
-    h2.title { font-size: 34px; line-height: 1.3; letter-spacing: -.6px; }
-    .section-lead { color: var(--muted); font-size: 16px; margin-top: 12px; max-width: 560px; }
+    section { padding: 5.5rem 0; }
+    h2.title, .cta-box h2 {
+      font-size: clamp(1.75rem, 1.2rem + 1.6vw, 2.125rem); line-height: 1.3; letter-spacing: -.018em;
+    }
+    .section-lead { color: var(--muted); font-size: 1rem; margin-top: .75rem; max-width: 35rem; }
 
     /* 기능: 카드 없이 두 칸으로 */
     #features {
-      background:
-        linear-gradient(180deg, rgba(16,18,26,.92), rgba(16,18,26,.95)),
-        url("assets/bg/features.jpg") center/cover no-repeat;
+      background: linear-gradient(180deg, rgba(16,18,26,.92), rgba(16,18,26,.95)), url("assets/bg/features.jpg") center/cover no-repeat;
     }
-    .items { display: grid; grid-template-columns: 1fr 1fr; gap: 0 56px; margin-top: 48px; }
-    .item { border-top: 1px solid var(--line); padding: 24px 0 30px; }
-    .item h3 { font-size: 18px; letter-spacing: -.3px; margin-bottom: 8px; }
-    .item p { color: var(--muted); font-size: 15px; }
+    .items { display: grid; grid-template-columns: 1fr 1fr; gap: 0 3.5rem; margin-top: 3rem; }
+    .item { border-top: 1px solid var(--line); padding: 1.5rem 0 1.875rem; }
+    .item h3 { font-size: 1.125rem; letter-spacing: -.01em; line-height: 1.4; margin-bottom: .5rem; }
+    .item p { color: var(--muted); font-size: .9375rem; max-width: 34rem; }
     .tag {
-      display: inline-block; margin-left: 8px; padding: 1px 8px; font-size: 12px; font-weight: 600;
-      color: var(--accent-text); border: 1px solid rgba(143,176,255,.45); border-radius: 999px; vertical-align: 2px;
+      display: inline-block; margin-left: .5rem; padding: .0625rem .5rem; font-size: .75rem; font-weight: 600; letter-spacing: .01em;
+      color: var(--accent-text); border: 1px solid rgba(143,176,255,.45); border-radius: 999px; vertical-align: .125rem;
     }
 
     /* 방송 소리: 왼쪽 제목, 오른쪽 목록 */
     #broadcast {
-      background:
-        linear-gradient(180deg, rgba(16,18,26,.9), rgba(16,18,26,.94)),
-        url("assets/bg/auto.jpg") center/cover no-repeat;
+      background: linear-gradient(180deg, var(--scrim-a), var(--scrim-b)), url("assets/bg/auto.jpg") center/cover no-repeat;
     }
-    .split { display: grid; grid-template-columns: 5fr 6fr; gap: 64px; align-items: start; }
+    .split { display: grid; grid-template-columns: 5fr 6fr; gap: 4rem; align-items: start; }
     .split .rows .item:first-child { border-top: 0; padding-top: 0; }
 
     /* 사용 순서: 가로 한 줄 */
     #how {
-      background:
-        linear-gradient(180deg, rgba(18,21,29,.9), rgba(18,21,29,.94)),
-        url("assets/bg/how.jpg") center/cover no-repeat;
+      background: linear-gradient(180deg, rgba(18,21,29,.9), rgba(18,21,29,.94)), url("assets/bg/how.jpg") center/cover no-repeat;
     }
-    .steps { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; margin-top: 48px; }
-    .steps li { border-top: 2px solid var(--accent); padding-top: 18px; }
-    .steps h3 { font-size: 18px; margin-bottom: 8px; letter-spacing: -.3px; }
-    .steps p { color: var(--muted); font-size: 15px; }
+    .steps { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; margin-top: 3rem; }
+    .steps li { border-top: 2px solid var(--accent); padding-top: 1.125rem; }
+    .steps h3 { font-size: 1.125rem; letter-spacing: -.01em; margin-bottom: .5rem; }
+    .steps p { color: var(--muted); font-size: .9375rem; }
 
     /* 지원 믹서: 줄 목록 */
     #mixers {
-      background:
-        linear-gradient(180deg, rgba(16,18,26,.9), rgba(16,18,26,.94)),
-        url("assets/bg/mixers.jpg") center/cover no-repeat;
+      background: linear-gradient(180deg, var(--scrim-a), var(--scrim-b)), url("assets/bg/mixers.jpg") center/cover no-repeat;
     }
-    .rowlist { margin-top: 40px; }
-    .rowlist .r {
-      display: grid; grid-template-columns: 300px 1fr; gap: 32px;
-      padding: 22px 0; border-top: 1px solid var(--line);
-    }
+    .rowlist { margin-top: 2.5rem; }
+    .rowlist .r { display: grid; grid-template-columns: 19rem 1fr; gap: 2rem; padding: 1.375rem 0; border-top: 1px solid var(--line); }
     .rowlist .r:last-child { border-bottom: 1px solid var(--line); }
-    .rowlist h3 { font-size: 17px; letter-spacing: -.2px; }
-    .rowlist p { color: var(--muted); font-size: 15px; }
-    .upcoming { margin-top: 24px; color: var(--muted); font-size: 15px; }
+    .rowlist h3 { font-size: 1.0625rem; letter-spacing: -.01em; line-height: 1.45; }
+    .rowlist p { color: var(--muted); font-size: .9375rem; }
+    .upcoming { margin-top: 1.5rem; color: var(--muted); font-size: .9375rem; }
+
+    /* 자주 묻는 질문 */
+    #faq { padding-bottom: 3rem; }
+    .faq { margin-top: 2.5rem; max-width: 46rem; }
+    .faq details { border-top: 1px solid var(--line); }
+    .faq details:last-child { border-bottom: 1px solid var(--line); }
+    .faq summary {
+      display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; min-height: 3.5rem;
+      padding: .75rem 0; cursor: pointer; list-style: none; font-weight: 600; font-size: 1.0625rem; letter-spacing: -.01em;
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after {
+      content: ""; flex: none; width: .55rem; height: .55rem; margin-right: .25rem;
+      border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+      transform: rotate(45deg) translateY(-.1rem); transition: transform .2s var(--ease-out);
+    }
+    .faq details[open] summary::after { transform: rotate(-135deg) translateY(-.1rem); }
+    .faq details p { color: var(--muted); font-size: .9375rem; padding: 0 2.5rem 1.375rem 0; max-width: 40rem; }
 
     /* 다운로드 */
-    #download { padding-top: 40px; }
+    #download { padding-top: 2.5rem; }
     .cta-box {
-      border: 1px solid var(--line); border-radius: var(--radius); padding: 64px 40px;
-      background:
-        linear-gradient(180deg, rgba(16,18,26,.84), rgba(16,18,26,.92)),
-        url("assets/bg/cta.jpg") center/cover no-repeat;
+      border: 1px solid var(--line); border-radius: var(--radius); padding: 4rem 2.5rem;
+      background: linear-gradient(180deg, rgba(16,18,26,.84), rgba(16,18,26,.92)), url("assets/bg/cta.jpg") center/cover no-repeat;
     }
-    .cta-box h2 { font-size: 34px; letter-spacing: -.6px; }
-    .cta-box .section-lead { margin-bottom: 28px; }
-    .cta-box .cta { display: flex; gap: 12px; flex-wrap: wrap; }
-    .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 40px; font-size: 14.5px; color: var(--muted); }
-    .notes h3 { font-size: 15px; color: var(--text); margin-bottom: 6px; }
-    .notes a, .fine a { text-decoration: underline; text-underline-offset: 3px; }
-    .fine { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 14.5px; color: var(--muted); }
+    .cta-box .section-lead { margin-bottom: 1.75rem; }
+    .cta-box .cta { display: flex; gap: .75rem; flex-wrap: wrap; }
+    .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 1.75rem; margin-top: 2.5rem; font-size: .90625rem; color: var(--muted); }
+    .notes h3 { font-size: .9375rem; color: var(--text); margin-bottom: .375rem; }
+    .notes a, .fine a { text-decoration: underline; text-underline-offset: .2em; text-decoration-thickness: 1px; }
+    .fine { margin-top: 1.75rem; padding-top: 1.375rem; border-top: 1px solid var(--line); font-size: .90625rem; color: var(--muted); }
 
-    footer { border-top: 1px solid var(--line); padding: 32px 0; color: var(--muted); font-size: 13px; }
+    footer { border-top: 1px solid var(--line); padding: 2rem 0; color: var(--muted); font-size: .8125rem; }
 
     @media (max-width: 860px) {
-      .hero { padding: 56px 0 40px; }
-      .hero h1 { font-size: 36px; }
-      .hero .lead { font-size: 16.5px; }
-      section { padding: 64px 0; }
-      h2.title, .cta-box h2 { font-size: 28px; }
+      .hero { padding: 3.5rem 0 2.5rem; }
+      .hero .lead { font-size: 1.0625rem; }
+      section { padding: 4rem 0; }
       .items, .split, .steps, .notes { grid-template-columns: 1fr; gap: 0; }
-      .split { gap: 32px; }
-      .steps { gap: 28px; }
-      .rowlist .r { grid-template-columns: 1fr; gap: 6px; }
-      .cta-box { padding: 40px 22px; }
+      .split { gap: 2rem; }
+      .steps { gap: 1.75rem; }
+      .rowlist .r { grid-template-columns: 1fr; gap: .375rem; }
+      .cta-box { padding: 2.5rem 1.375rem; }
       nav .links { display: none; }
-      .shot { margin-top: 44px; }
+      .shot { margin-top: 2.75rem; }
     }
+
+    /* 움직임·투명도·대비를 줄이는 설정 존중 */
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      .btn { transition: none; }
-      .btn:hover { transform: none; }
+      .btn, .faq summary::after { transition: none; }
+      .btn:hover, .btn:active { transform: none; }
+      .shot { animation: fade .4s ease both; }
+      @keyframes fade { from { opacity: 0; } }
+    }
+    @media (prefers-reduced-transparency: reduce) {
+      nav { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    }
+    @media (prefers-contrast: more) {
+      :root { --line: #6a7498; --muted: #c9cfe0; }
+      nav { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+      .tag { border-color: var(--accent-text); }
     }
   </style>
 </head>
 <body>
-  <nav>
+  <a href="#main" class="skip">본문으로 건너뛰기</a>
+  <nav aria-label="주요 메뉴">
     <div class="wrap">
       <a href="#" class="logo">X32 교회 음향</a>
       <div class="links">
@@ -166,163 +210,193 @@
         <a href="#broadcast">방송 소리</a>
         <a href="#how">사용 순서</a>
         <a href="#mixers">지원 믹서</a>
+        <a href="#faq">질문</a>
       </div>
       <a href="#download" class="btn ghost">다운로드</a>
     </div>
   </nav>
 
-  <header class="hero">
-    <div class="wrap">
-      <p class="kicker">Behringer X32 · M32 믹서용 무료 앱</p>
-      <h1>음향을 처음 맡아도 막히지 않게</h1>
-      <p class="lead">믹서를 연결하고 버튼을 누르면, 본당과 유튜브 방송과 찬양팀 모니터 소리를 앱이 순서대로 맞춰줘요.</p>
-      <div class="cta">
-        <a href="#download" class="btn primary">다운로드</a>
-        <a href="#how" class="btn ghost">사용 순서 보기</a>
-      </div>
-      <figure class="shot">
-        <img src="assets/screenshot.png" width="1920" height="1770" alt="X32 교회 음향 앱 화면. 본당, 유튜브 방송, 찬양팀 모니터 세 출력과 자동 사운드체크 진행 상태, 채널 목록이 보인다" />
-        <figcaption>예시 데이터로 채운 실제 앱 화면이에요.</figcaption>
-      </figure>
-    </div>
-  </header>
-
-  <section id="features">
-    <div class="wrap">
-      <h2 class="title">앱이 해주는 일</h2>
-      <p class="section-lead">예배 전에 맞추고, 예배 중에 바꾸고, 잘못 눌러도 되돌릴 수 있게 만들었어요.</p>
-      <div class="items">
-        <div class="item">
-          <h3>예배 순서대로 장면 전환</h3>
-          <p>설교, 찬양팀, 기도, 광고, 전체 음소거를 버튼 하나로 바꿔요. 순서를 미리 묶어 두면 스페이스바로 다음 장면으로 넘어가요.</p>
-        </div>
-        <div class="item">
-          <h3>본당, 방송, 모니터를 따로 맞추기</h3>
-          <p>본당 스피커와 유튜브 방송과 찬양팀 모니터는 듣는 사람이 달라서 소리도 달라야 해요. '예배 시작' 버튼 하나로 세 곳을 한 번에 잡아요.</p>
-        </div>
-        <div class="item">
-          <h3>자동 사운드체크<span class="tag">베타</span></h3>
-          <p>리허설 때 악기를 한 명씩 소리 내면 어느 채널인지 찾아서 음량을 맞춰요. 마이크 입력 게인은 건드리지 않아요.</p>
-        </div>
-        <div class="item">
-          <h3>하울링 감지와 억제</h3>
-          <p>삐익 하는 소리가 나기 시작하면 어느 높이의 소리인지 찾아 그 부분만 조금씩 줄여요. 끄면 줄였던 걸 원래대로 돌려놔요.</p>
-        </div>
-        <div class="item">
-          <h3>폰과 태블릿으로 조작</h3>
-          <p>같은 와이파이의 브라우저에서 장면 전환과 전체 음소거를 할 수 있어요. 따로 설치할 건 없고, 앱에 뜨는 4자리 PIN을 아는 기기만 조작돼요.</p>
-        </div>
-        <div class="item">
-          <h3>언제든 처음 상태로</h3>
-          <p>연결할 때 믹서의 원래 설정을 자동으로 저장해요. 뭘 눌러도 '되돌리기'와 '원본 복구'로 돌아가요. 오늘 맞춘 소리는 믹서 안에 저장해 두면 다음 주엔 컴퓨터 없이 불러올 수 있어요.</p>
-        </div>
-        <div class="item">
-          <h3>사람별 마이크 설정</h3>
-          <p>담임목사님처럼 사람마다 EQ와 로우컷을 저장해 두고, 그날 쓰는 채널에 그대로 적용해요.</p>
-        </div>
-        <div class="item">
-          <h3>앱과 믹서가 함께 움직여요</h3>
-          <p>앱에서 페이더를 움직이면 믹서가 따라 움직이고, 믹서에서 바꾸면 앱 화면에도 바로 보여요.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="broadcast">
-    <div class="wrap split">
-      <div>
-        <h2 class="title">유튜브에서 설교 소리가 작게 들린다면</h2>
-        <p class="section-lead">본당 스피커 소리는 그대로 두고, 유튜브로 나가는 소리만 따로 손봐요.</p>
-      </div>
-      <div class="rows">
-        <div class="item">
-          <h3>방송 목소리 키우기</h3>
-          <p>설교 마이크를 방송으로 보내는 양을 4dB 올리고 컴프레서를 켜서, 작게 말해도 또렷하게 나가요. 끄면 원래 값으로 돌려놔요.</p>
-        </div>
-        <div class="item">
-          <h3>설교 모드</h3>
-          <p>설교 시간에는 방송에서만 악기와 반주 소리를 12dB 줄여서 말씀이 묻히지 않게 해요.</p>
-        </div>
-        <div class="item">
-          <h3>방송 자동 레벨</h3>
-          <p>유튜브가 기준으로 삼는 -14 LUFS에 맞춰 방송 음량을 계속 보정해요.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="how">
-    <div class="wrap">
-      <h2 class="title">사용 순서</h2>
-      <p class="section-lead">앱을 처음 켜면 화면 안내가 따라와요. 큰 흐름만 알아두세요.</p>
-      <ol class="steps">
-        <li>
-          <h3>연결하기</h3>
-          <p>믹서와 컴퓨터를 같은 네트워크에 연결하고 '믹서 찾기'를 눌러요. 안 잡히면 믹서에 표시된 IP를 직접 입력해요.</p>
-        </li>
-        <li>
-          <h3>맞추기</h3>
-          <p>'예배 소리 자동 맞추기' 버튼 하나로 본당과 방송과 모니터를 기본 소리로 잡아요.</p>
-        </li>
-        <li>
-          <h3>확인하기</h3>
-          <p>자동 사운드체크를 켜고 악기를 한 명씩 소리 내 보세요. 채널마다 완료 표시가 떠요.</p>
-        </li>
-        <li>
-          <h3>저장하기</h3>
-          <p>마음에 들면 '믹서에 저장'을 눌러요. 다음 주엔 믹서에서 저장된 번호를 고르고 GO만 누르면 돼요.</p>
-        </li>
-      </ol>
-    </div>
-  </section>
-
-  <section id="mixers">
-    <div class="wrap">
-      <h2 class="title">지원하는 믹서</h2>
-      <div class="rowlist">
-        <div class="r">
-          <h3>Behringer X32, Midas M32</h3>
-          <p>위에서 소개한 기능을 모두 쓸 수 있어요.</p>
-        </div>
-        <div class="r">
-          <h3>Behringer X-Air (XR12, XR16, XR18)<span class="tag">베타</span></h3>
-          <p>같은 방식으로 연결돼요. 자동 사운드체크는 아직 지원하지 않아요.</p>
-        </div>
-        <div class="r">
-          <h3>아날로그 믹서</h3>
-          <p>컴퓨터 마이크로 현장 소리를 듣고, 믹서 사진 위에서 어느 노브를 어느 쪽으로 돌릴지 알려줘요. 브랜드는 상관없어요.</p>
-        </div>
-      </div>
-      <p class="upcoming">준비 중인 믹서: Wing, Yamaha, Allen &amp; Heath, PreSonus</p>
-    </div>
-  </section>
-
-  <section id="download">
-    <div class="wrap">
-      <div class="cta-box">
-        <h2>다운로드</h2>
-        <p class="section-lead">Windows와 Mac에서 무료로 쓸 수 있어요. 소스 코드는 GitHub에 공개돼 있어요(MIT).</p>
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap">
+        <h1 id="hero-title">음향을 처음 맡아도 막히지 않게</h1>
+        <p class="lead">Behringer X32·M32 믹서용 무료 앱이에요. 연결하고 버튼을 누르면 본당과 유튜브 방송과 찬양팀 모니터 소리를 순서대로 맞춰줘요.</p>
         <div class="cta">
-          <a href="https://github.com/koreayjk/x32audio/releases/latest/download/X32ChurchAudio-win.exe" class="btn primary">Windows 다운로드</a>
-          <a href="https://github.com/koreayjk/x32audio/releases/latest/download/X32ChurchAudio-mac-arm64.dmg" class="btn primary">Mac (M1~M4) 다운로드</a>
-          <a href="https://github.com/koreayjk/x32audio/releases/latest/download/X32ChurchAudio-mac-x64.dmg" class="btn ghost">Mac (인텔) 다운로드</a>
+          <a href="#download" class="btn primary">다운로드</a>
+          <a href="#how" class="btn ghost">사용 순서 보기</a>
         </div>
-        <div class="notes">
-          <div>
-            <h3>Mac에서 설치할 때</h3>
-            <p>내려받은 파일을 열어 앱을 '응용 프로그램'으로 옮기고 더블클릭하세요. Apple 공증을 받은 앱이라 따로 허용할 필요가 없어요.</p>
-          </div>
-          <div>
-            <h3>Windows에서 설치할 때</h3>
-            <p>파란 경고창이 뜨면 '추가 정보'를 누르고 '실행'을 고르세요. 방화벽 허용 창이 뜨면 허용해야 믹서와 연결돼요.</p>
-          </div>
-        </div>
-        <p class="fine">아직 현장 테스트를 늘려가는 중이에요. 써 보시고 불편한 점을 알려주시면 고칠게요.
-          <a href="https://github.com/koreayjk/x32audio/issues">GitHub에 의견 남기기</a>
-          · <a href="https://github.com/koreayjk/x32audio/releases/latest">이전 버전 보기</a></p>
+        <figure class="shot">
+          <img src="assets/screenshot.png" width="1920" height="1770" decoding="async" alt="X32 교회 음향 앱 화면. 본당, 유튜브 방송, 찬양팀 모니터 세 출력과 자동 사운드체크 진행 상태, 채널 목록이 보인다" />
+          <figcaption>예시 데이터로 채운 실제 앱 화면이에요.</figcaption>
+        </figure>
       </div>
-    </div>
-  </section>
+    </section>
+
+    <section id="features">
+      <div class="wrap">
+        <h2 class="title">앱이 해주는 일</h2>
+        <p class="section-lead">예배 전에 맞추고, 예배 중에 바꾸고, 잘못 눌러도 되돌릴 수 있게 만들었어요.</p>
+        <div class="items">
+          <div class="item">
+            <h3>예배 순서대로 장면 전환</h3>
+            <p>설교, 찬양팀, 기도, 광고, 전체 음소거를 버튼 하나로 바꿔요. 순서를 미리 묶어 두면 스페이스바로 다음 장면으로 넘어가요.</p>
+          </div>
+          <div class="item">
+            <h3>본당, 방송, 모니터를 따로 맞추기</h3>
+            <p>본당 스피커와 유튜브 방송과 찬양팀 모니터는 듣는 사람이 달라서 소리도 달라야 해요. '예배 시작' 버튼 하나로 세 곳을 한 번에 잡아요.</p>
+          </div>
+          <div class="item">
+            <h3>자동 사운드체크<span class="tag">베타</span></h3>
+            <p>리허설 때 악기를 한 명씩 소리 내면 어느 채널인지 찾아서 음량을 맞춰요. 마이크 입력 게인은 건드리지 않아요.</p>
+          </div>
+          <div class="item">
+            <h3>하울링 감지와 억제</h3>
+            <p>삐익 하는 소리가 나기 시작하면 어느 높이의 소리인지 찾아 그 부분만 조금씩 줄여요. 끄면 줄였던 걸 원래대로 돌려놔요.</p>
+          </div>
+          <div class="item">
+            <h3>폰과 태블릿으로 조작</h3>
+            <p>같은 와이파이의 브라우저에서 장면 전환과 전체 음소거를 할 수 있어요. 따로 설치할 건 없고, 앱에 뜨는 4자리 PIN을 아는 기기만 조작돼요.</p>
+          </div>
+          <div class="item">
+            <h3>언제든 처음 상태로</h3>
+            <p>연결할 때 믹서의 원래 설정을 자동으로 저장해요. 뭘 눌러도 '되돌리기'와 '원본 복구'로 돌아가요. 오늘 맞춘 소리는 믹서 안에 저장해 두면 다음 주엔 컴퓨터 없이 불러올 수 있어요.</p>
+          </div>
+          <div class="item">
+            <h3>사람별 마이크 설정</h3>
+            <p>담임목사님처럼 사람마다 EQ와 로우컷을 저장해 두고, 그날 쓰는 채널에 그대로 적용해요.</p>
+          </div>
+          <div class="item">
+            <h3>앱과 믹서가 함께 움직여요</h3>
+            <p>앱에서 페이더를 움직이면 믹서가 따라 움직이고, 믹서에서 바꾸면 앱 화면에도 바로 보여요.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="broadcast">
+      <div class="wrap split">
+        <div>
+          <h2 class="title">유튜브에서 설교 소리가 작게 들린다면</h2>
+          <p class="section-lead">본당 스피커 소리는 그대로 두고, 유튜브로 나가는 소리만 따로 손봐요.</p>
+        </div>
+        <div class="rows">
+          <div class="item">
+            <h3>방송 목소리 키우기</h3>
+            <p>설교 마이크를 방송으로 보내는 양을 4dB 올리고 컴프레서를 켜서, 작게 말해도 또렷하게 나가요. 끄면 원래 값으로 돌려놔요.</p>
+          </div>
+          <div class="item">
+            <h3>설교 모드</h3>
+            <p>설교 시간에는 방송에서만 악기와 반주 소리를 12dB 줄여서 말씀이 묻히지 않게 해요.</p>
+          </div>
+          <div class="item">
+            <h3>방송 자동 레벨</h3>
+            <p>유튜브가 기준으로 삼는 -14 LUFS에 맞춰 방송 음량을 계속 보정해요.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="wrap">
+        <h2 class="title">사용 순서</h2>
+        <p class="section-lead">앱을 처음 켜면 화면 안내가 따라와요. 큰 흐름만 알아두세요.</p>
+        <ol class="steps">
+          <li>
+            <h3>연결하기</h3>
+            <p>믹서와 컴퓨터를 같은 네트워크에 연결하고 '믹서 찾기'를 눌러요. 안 잡히면 믹서에 표시된 IP를 직접 입력해요.</p>
+          </li>
+          <li>
+            <h3>맞추기</h3>
+            <p>'예배 소리 자동 맞추기' 버튼 하나로 본당과 방송과 모니터를 기본 소리로 잡아요.</p>
+          </li>
+          <li>
+            <h3>확인하기</h3>
+            <p>자동 사운드체크를 켜고 악기를 한 명씩 소리 내 보세요. 채널마다 완료 표시가 떠요.</p>
+          </li>
+          <li>
+            <h3>저장하기</h3>
+            <p>마음에 들면 '믹서에 저장'을 눌러요. 다음 주엔 믹서에서 저장된 번호를 고르고 GO만 누르면 돼요.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="mixers">
+      <div class="wrap">
+        <h2 class="title">지원하는 믹서</h2>
+        <div class="rowlist">
+          <div class="r">
+            <h3>Behringer X32, Midas M32</h3>
+            <p>위에서 소개한 기능을 모두 쓸 수 있어요.</p>
+          </div>
+          <div class="r">
+            <h3>Behringer X-Air (XR12, XR16, XR18)<span class="tag">베타</span></h3>
+            <p>같은 방식으로 연결돼요. 자동 사운드체크는 아직 지원하지 않아요.</p>
+          </div>
+          <div class="r">
+            <h3>아날로그 믹서</h3>
+            <p>컴퓨터 마이크로 현장 소리를 듣고, 믹서 사진 위에서 어느 노브를 어느 쪽으로 돌릴지 알려줘요. 브랜드는 상관없어요.</p>
+          </div>
+        </div>
+        <p class="upcoming">준비 중인 믹서: Wing, Yamaha, Allen &amp; Heath, PreSonus</p>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="wrap">
+        <h2 class="title">자주 묻는 질문</h2>
+        <div class="faq">
+          <details>
+            <summary>아이패드나 폰에 설치할 수 있나요?</summary>
+            <p>앱은 Windows와 Mac 컴퓨터에서 돌아가요. 아이패드와 아이폰에는 설치할 수 없어요. 대신 같은 와이파이의 폰이나 태블릿 브라우저로 장면 전환과 전체 음소거는 할 수 있어요.</p>
+          </details>
+          <details>
+            <summary>공유기 없이 컴퓨터와 믹서를 랜선으로 바로 연결해도 되나요?</summary>
+            <p>돼요. 다만 공유기가 없으면 IP를 직접 정해야 해요. 믹서와 컴퓨터가 앞의 세 숫자는 같고 마지막 숫자만 다른 주소를 쓰게 하세요. 예를 들어 믹서가 192.168.1.2면 컴퓨터는 192.168.1.10이에요.</p>
+          </details>
+          <details>
+            <summary>잘못 눌러서 소리가 이상해지면요?</summary>
+            <p>연결할 때 믹서의 원래 설정을 자동으로 저장해요. '되돌리기'는 바로 직전 상태로, '원본 복구'는 처음 연결했을 때 상태로 돌려줘요.</p>
+          </details>
+          <details>
+            <summary>영어로도 쓸 수 있나요?</summary>
+            <p>화면 언어를 영어로 바꿀 수는 있지만, 번역된 건 버튼과 제목 일부예요. 대부분의 안내 문구는 한국어로 나와요.</p>
+          </details>
+          <details>
+            <summary>비용이 드나요?</summary>
+            <p>무료예요. 소스 코드도 GitHub에 공개돼 있어요(MIT 라이선스).</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section id="download">
+      <div class="wrap">
+        <div class="cta-box">
+          <h2>다운로드</h2>
+          <p class="section-lead">Windows와 Mac에서 무료로 쓸 수 있어요. 내 컴퓨터에 맞는 걸 골라 주세요.</p>
+          <div class="cta">
+            <a href="https://github.com/koreayjk/x32audio/releases/latest/download/X32ChurchAudio-win.exe" class="btn primary">Windows 다운로드</a>
+            <a href="https://github.com/koreayjk/x32audio/releases/latest/download/X32ChurchAudio-mac-arm64.dmg" class="btn primary">Mac (M1~M4) 다운로드</a>
+            <a href="https://github.com/koreayjk/x32audio/releases/latest/download/X32ChurchAudio-mac-x64.dmg" class="btn ghost">Mac (인텔) 다운로드</a>
+          </div>
+          <div class="notes">
+            <div>
+              <h3>Mac에서 설치할 때</h3>
+              <p>내려받은 파일을 열어 앱을 '응용 프로그램'으로 옮기고 더블클릭하세요. Apple 공증을 받은 앱이라 따로 허용할 필요가 없어요.</p>
+            </div>
+            <div>
+              <h3>Windows에서 설치할 때</h3>
+              <p>파란 경고창이 뜨면 '추가 정보'를 누르고 '실행'을 고르세요. 방화벽 허용 창이 뜨면 허용해야 믹서와 연결돼요.</p>
+            </div>
+          </div>
+          <p class="fine">아직 현장 테스트를 늘려가는 중이에요. 써 보시고 불편한 점을 알려주시면 고칠게요.
+            <a href="https://github.com/koreayjk/x32audio/issues">GitHub에 의견 남기기</a>
+            · <a href="https://github.com/koreayjk/x32audio/releases/latest">이전 버전 보기</a></p>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <footer>
     <div class="wrap">
